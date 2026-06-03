@@ -13,7 +13,7 @@ const newReview = ref({ rating: 5, comment: '' })
 const submitting = ref(false)
 const reviewError = ref('')
 
-const API = import.meta.env.VITE_API_URL
+const API = import.meta.env.VITE_API_URL || '/api'
 
 onMounted(async () => {
   const [p, r] = await Promise.all([
