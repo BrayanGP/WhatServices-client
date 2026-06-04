@@ -8,8 +8,15 @@ const router = useRouter()
 <template>
   <div
     @click="router.push(`/providers/${provider._id}`)"
-    class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer p-5 transition-shadow"
+    class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer overflow-hidden transition-shadow"
   >
+    <img
+      v-if="provider.photos && provider.photos.length"
+      :src="provider.photos[0].url"
+      class="w-full h-36 object-cover"
+      alt="Trabajo"
+    />
+    <div class="p-5">
     <div class="flex items-center gap-3 mb-3">
       <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl font-bold text-blue-600 shrink-0">
         {{ provider.businessName?.[0] }}
@@ -40,5 +47,6 @@ const router = useRouter()
     >
       {{ provider.availability === 'available' ? '● Disponible' : provider.availability }}
     </span>
+    </div>
   </div>
 </template>

@@ -13,6 +13,7 @@ const load = () => {
   store.fetchProviders({
     category: route.query.category,
     city: route.query.city,
+    cp: route.query.cp,
     page: page.value,
     limit: 12,
   })
@@ -28,6 +29,7 @@ watch(() => route.query, load)
       Proveedores
       <span v-if="route.query.category" class="text-blue-600"> · {{ route.query.category }}</span>
       <span v-if="route.query.city" class="text-gray-500 text-lg font-normal"> en {{ route.query.city }}</span>
+      <span v-if="route.query.cp" class="text-gray-500 text-lg font-normal"> · CP {{ route.query.cp }}</span>
     </h1>
     <p class="text-sm text-gray-400 mb-6">{{ store.total }} resultados</p>
 
