@@ -5,8 +5,10 @@ const routes = [
   { path: '/providers', component: () => import('../views/ProviderListView.vue') },
   { path: '/providers/:id', component: () => import('../views/ProviderDetailView.vue') },
   { path: '/login', component: () => import('../views/LoginView.vue') },
-  { path: '/register', component: () => import('../views/RegisterView.vue') },
+  // El registro web es solo para profesionales
+  { path: '/register', redirect: '/unete' },
   { path: '/unete', component: () => import('../views/EmployeeRegisterView.vue') },
+  { path: '/mi-perfil', component: () => import('../views/MyProfileView.vue') },
 ]
 
 export default createRouter({

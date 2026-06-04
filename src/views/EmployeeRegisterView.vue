@@ -14,6 +14,7 @@ const loading = ref(false)
 const geoStatus = ref('')
 const createdId = ref(null)
 const photos = ref([])
+const profilePhoto = ref(null)
 const uploading = ref(false)
 const done = ref(false)
 
@@ -76,19 +77,23 @@ const submit = async () => {
 }
 
 const onFiles = (e) => { photos.value = Array.from(e.target.files).slice(0, 5) }
+const onProfile = (e) => { profilePhoto.value = e.target.files[0] || null }
 
 const uploadPhotos = async () => {
-  if (!photos.value.length) { done.value = true; step.value = 3; return }
   uploading.value = true
   error.value = ''
   try {
-    const fd = new FormData()
-    photos.value.forEach((f) => fd.append('photos', f))
-    const res = await auth.authFetch(`${API}/providers/${createdId.value}/photos`, {
-      method: 'POST',
-      body: fd,
-    })
-    if (!res.ok) throw new Error((await res.json()).message || 'Error al subir fotos')
+    if (profilePhoto.value) {
+      const fdp = new FormData()
+      fdp.append('photo', profilePhoto.value)
+      await auth.authFetch(`${API}/providers/${createdId.value}/profile-photo`, { method: 'POST', body: fdp })
+    }
+    if (photos.value.length) {
+      const fd = new FormData()
+      photos.value.forEach((f) => fd.append('photos', f))
+      const res = await auth.authFetch(`${API}/providers/${createdId.value}/photos`, { method: 'POST', body: fd })
+      if (!res.ok) throw new Error((await res.json()).message || 'Error al subir fotos')
+    }
     done.value = true
     step.value = 3
   } catch (e) {
@@ -143,8 +148,15 @@ const uploadPhotos = async () => {
 
       <!-- Paso 2: fotos -->
       <div v-else-if="step === 2" class="space-y-4">
-        <p class="text-sm text-gray-600">¡Cuenta creada! Sube fotos de tus trabajos (hasta 5) para atraer más clientes.</p>
-        <input type="file" accept="image/*" multiple @change="onFiles" class="w-full text-sm" />
+        <p class="text-sm text-gray-600">¡Cuenta creada! 🎉</p>
+        <div>
+          <label class="text-sm font-medium text-gray-700 block mb-1">Foto de perfil (se muestra en el catálogo de WhatsApp)</label>
+          <input type="file" accept="image/*" @change="onProfile" class="w-full text-sm" />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-700 block mb-1">Fotos de tus trabajos (hasta 5)</label>
+          <input type="file" accept="image/*" multiple @change="onFiles" class="w-full text-sm" />
+        </div>
         <p v-if="photos.length" class="text-xs text-gray-500">{{ photos.length }} foto(s) seleccionada(s)</p>
         <div class="flex gap-2">
           <button @click="uploadPhotos" :disabled="uploading" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
