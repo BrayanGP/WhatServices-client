@@ -18,7 +18,9 @@ const router = useRouter()
     />
     <div class="p-5">
     <div class="flex items-center gap-3 mb-3">
-      <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl font-bold text-blue-600 shrink-0">
+      <img v-if="provider.profilePhoto?.url" :src="provider.profilePhoto.url"
+        class="w-12 h-12 rounded-full object-cover shrink-0" alt="" />
+      <div v-else class="w-12 h-12 bg-brand-base/20 rounded-full flex items-center justify-center text-xl font-bold text-brand-medium shrink-0">
         {{ provider.businessName?.[0] }}
       </div>
       <div class="min-w-0">
@@ -32,7 +34,7 @@ const router = useRouter()
         <span
           v-for="cat in provider.categories?.slice(0, 2)"
           :key="cat"
-          class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
+          class="text-xs bg-brand-base/10 text-brand-medium px-2 py-1 rounded-full"
         >{{ cat }}</span>
       </div>
       <div class="flex items-center gap-1 text-sm shrink-0">
