@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import miLogo from '../assets/logoWhatServices.png'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 const router = useRouter()
@@ -105,10 +106,13 @@ const uploadPhotos = async () => {
 </script>
 
 <template>
-  <div class="max-w-lg mx-auto py-10 px-4">
-    <div class="bg-white rounded-xl shadow p-6">
-      <h1 class="text-2xl font-bold text-gray-900 mb-1">Únete como profesional</h1>
-      <p class="text-sm text-gray-500 mb-6">Regístrate y empieza a recibir clientes de WhatServices.</p>
+  <div class="bg-gradient-to-br from-brand-green to-brand-dark py-10 px-4 min-h-[80vh]">
+    <div class="max-w-lg mx-auto bg-white rounded-2xl shadow-xl p-6">
+      <div class="flex flex-col items-center mb-6">
+        <img :src="miLogo" alt="WhatServices" class="h-12 w-auto object-contain mb-2" />
+        <h1 class="text-2xl font-bold text-brand-dark">Únete como profesional</h1>
+        <p class="text-sm text-gray-500">Regístrate y empieza a recibir clientes de WhatServices.</p>
+      </div>
 
       <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-4">{{ error }}</div>
 
@@ -131,7 +135,7 @@ const uploadPhotos = async () => {
             <button
               v-for="c in categories" :key="c._id" type="button" @click="toggleCat(c.name)"
               class="text-sm px-3 py-1.5 rounded-full border"
-              :class="form.categories.includes(c.name) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'"
+              :class="form.categories.includes(c.name) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300'"
             >{{ c.icon }} {{ c.name }}</button>
           </div>
         </div>
@@ -141,7 +145,7 @@ const uploadPhotos = async () => {
           <span class="text-xs text-gray-500 ml-2">{{ geoStatus }}</span>
         </div>
 
-        <button @click="submit" :disabled="loading" class="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+        <button @click="submit" :disabled="loading" class="w-full bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-medium">
           {{ loading ? 'Registrando...' : 'Continuar' }}
         </button>
       </div>
@@ -159,7 +163,7 @@ const uploadPhotos = async () => {
         </div>
         <p v-if="photos.length" class="text-xs text-gray-500">{{ photos.length }} foto(s) seleccionada(s)</p>
         <div class="flex gap-2">
-          <button @click="uploadPhotos" :disabled="uploading" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+          <button @click="uploadPhotos" :disabled="uploading" class="flex-1 bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-medium">
             {{ uploading ? 'Subiendo...' : 'Subir y finalizar' }}
           </button>
           <button @click="step = 3; done = true" class="text-sm text-gray-400 px-3">Omitir</button>
@@ -171,7 +175,7 @@ const uploadPhotos = async () => {
         <div class="text-4xl mb-3">🎉</div>
         <h2 class="text-lg font-semibold text-gray-800 mb-1">¡Listo, ya eres parte de WhatServices!</h2>
         <p class="text-sm text-gray-500 mb-4">Tu perfil ya puede aparecer en las búsquedas de clientes.</p>
-        <button @click="router.push(`/providers/${createdId}`)" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700">Ver mi perfil</button>
+        <button @click="router.push('/mi-perfil')" class="bg-brand-green text-white px-5 py-2.5 rounded-lg hover:bg-brand-lightGreen">Ver mi perfil</button>
       </div>
     </div>
   </div>

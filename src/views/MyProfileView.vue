@@ -97,7 +97,7 @@ const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
           <div class="flex flex-wrap gap-2">
             <button v-for="c in categories" :key="c._id" type="button" @click="toggleCat(c.name)"
               class="text-sm px-3 py-1.5 rounded-full border"
-              :class="provider.categories?.includes(c.name) ? 'bg-brand-base text-white border-brand-base' : 'bg-white text-gray-600 border-gray-300'">
+              :class="provider.categories?.includes(c.name) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300'">
               {{ c.icon }} {{ c.name }}
             </button>
           </div>
@@ -108,7 +108,7 @@ const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
           <option value="inactive">Inactivo</option>
         </select>
         <div class="flex items-center gap-3">
-          <button @click="save" :disabled="saving" class="bg-brand-base text-white px-5 py-2 rounded-lg hover:bg-brand-light disabled:opacity-50">
+          <button @click="save" :disabled="saving" class="bg-brand-green text-white px-5 py-2 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50">
             {{ saving ? 'Guardando...' : 'Guardar cambios' }}
           </button>
           <span class="text-sm text-gray-500">{{ msg }}</span>
@@ -130,7 +130,7 @@ const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
         <p class="text-xs text-gray-500 mb-3">Muéstralo al terminar un trabajo: el cliente lo escanea y te califica por WhatsApp.</p>
         <img v-if="PUBLIC_BACKEND" :src="rateQrUrl()" alt="QR calificación" class="w-48 h-48 mx-auto" />
         <p v-else class="text-xs text-amber-600">Configura VITE_PUBLIC_BACKEND_URL para ver el QR.</p>
-        <a v-if="PUBLIC_BACKEND" :href="rateQrUrl()" download class="inline-block mt-2 text-brand-light text-sm hover:underline">Descargar QR</a>
+        <a v-if="PUBLIC_BACKEND" :href="rateQrUrl()" download class="inline-block mt-2 text-brand-green font-medium text-sm hover:text-brand-lightGreen hover:underline">Descargar QR</a>
       </div>
     </template>
   </main>
