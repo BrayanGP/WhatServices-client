@@ -32,7 +32,7 @@ const logout = async () => {
 
       <div class="hidden md:flex flex-1 items-center justify-between ml-10">
         <div class="flex items-center gap-6">
-          <router-link to="/providers" class="text-brand-dark hover:text-brand-green text-sm font-semibold transition-colors">
+          <router-link v-if="!auth.isLoggedIn" to="/providers" class="text-brand-dark hover:text-brand-green text-sm font-semibold transition-colors">
             Profesionales
           </router-link>
         </div>
@@ -61,7 +61,7 @@ const logout = async () => {
 
     <!-- Menu movil -->
     <div v-if="isOpen" class="md:hidden bg-white border-t border-gray-100 px-4 py-4 flex flex-col gap-4 shadow-inner">
-      <router-link to="/providers" class="text-brand-dark hover:text-brand-green text-sm py-1 font-semibold transition-colors" @click="isOpen = false">
+      <router-link v-if="!auth.isLoggedIn" to="/providers" class="text-brand-dark hover:text-brand-green text-sm py-1 font-semibold transition-colors" @click="isOpen = false">
         Profesionales
       </router-link>
       <template v-if="auth.isLoggedIn">
