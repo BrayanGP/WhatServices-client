@@ -51,24 +51,41 @@ onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
         <div v-else-if="store.providers.length === 0" class="text-center py-12 text-gray-400">
           Aún no hay profesionales registrados.
         </div>
-        <Swiper
-          v-else
-          :modules="modules"
-          :slides-per-view="1"
-          :space-between="24"
-          :navigation="true"
-          :pagination="{ clickable: true }"
-          :autoplay="{ delay: 4000, disableOnInteraction: false }"
-          :breakpoints="{
-            640:  { slidesPerView: 2 },
-            1024: { slidesPerView: 3 },
-          }"
-          class="pb-10"
-        >
-          <SwiperSlide v-for="p in store.providers" :key="p._id">
-            <ProviderCard :provider="p" />
-          </SwiperSlide>
-        </Swiper>
+        <div v-else class="relative px-10">
+          <Swiper
+            :modules="modules"
+            :slides-per-view="1"
+            :space-between="24"
+            :loop="true"
+            :navigation="{
+              nextEl: '.swiper-btn-next',
+              prevEl: '.swiper-btn-prev',
+            }"
+            :pagination="{ clickable: true, el: '.swiper-dots' }"
+            :autoplay="{ delay: 4000, disableOnInteraction: false }"
+            :breakpoints="{
+              640:  { slidesPerView: 2 },
+              1024: { slidesPerView: 3 },
+            }"
+            class="pb-12"
+          >
+            <SwiperSlide v-for="p in store.providers" :key="p._id">
+              <ProviderCard :provider="p" />
+            </SwiperSlide>
+          </Swiper>
+
+          <!-- Botón anterior -->
+          <button class="swiper-btn-prev absolute left-0 top-1/2 -translate-y-6 z-10 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-brand-green hover:bg-brand-green hover:text-white transition-colors">
+            ‹
+          </button>
+          <!-- Botón siguiente -->
+          <button class="swiper-btn-next absolute right-0 top-1/2 -translate-y-6 z-10 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-brand-green hover:bg-brand-green hover:text-white transition-colors">
+            ›
+          </button>
+
+          <!-- Dots de paginación -->
+          <div class="swiper-dots flex justify-center gap-2 mt-2"></div>
+        </div>
         <div class="text-center mt-8">
           <router-link to="/providers" class="text-brand-green hover:text-brand-lightGreen font-semibold inline-flex items-center gap-1 transition-colors">
             Ver todos los profesionales →
@@ -78,3 +95,30 @@ onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
     </template>
   </main>
 </template>
+
+<style scoped>
+/* Dots de paginación */
+:deep(.swiper-dots .swiper-pagination-bullet) {
+  width: 10px;
+  height: 10px;
+  background: #d1d5db;
+  opacity: 1;
+  border-radius: 9999px;
+  transition: background 0.3s;
+}
+:deep(.swiper-dots .swiper-pagination-bullet-active) {
+  background: #16a34a;
+}
+
+/* Botones prev/next custom */
+.swiper-btn-prev,
+.swiper-btn-next {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.swiper-btn-prev.swiper-button-disabled,
+.swiper-btn-next.swiper-button-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+</style>
