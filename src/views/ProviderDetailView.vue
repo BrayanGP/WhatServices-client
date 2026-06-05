@@ -1,112 +1,286 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
-import { useAuthStore } from '../stores/auth'
 
-const route = useRoute()
-const store = useProvidersStore()
-const auth = useAuthStore()
-const provider = ref(null)
-const reviews = ref([])
-const newReview = ref({ rating: 5, comment: '' })
-const submitting = ref(false)
+const route  = useRoute()
+const store  = useProvidersStore()
+const API    = import.meta.env.VITE_API_URL || '/api'
+
+const provider    = ref(null)
+const reviews     = ref([])
+const submitting  = ref(false)
 const reviewError = ref('')
+const reviewOk    = ref(false)
+const lightbox    = ref(null) // URL de foto ampliada
 
-const API = import.meta.env.VITE_API_URL || '/api'
+// ── deviceId: una reseña por dispositivo ─────────────────────────────────────
+const getDeviceId = () => {
+  let id = localStorage.getItem('ws_device_id')
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('ws_device_id', id) }
+  return id
+}
+const deviceId   = getDeviceId()
+const myReview   = ref(null)   // reseña existente de este dispositivo
+const isEditing  = ref(false)
 
+const draft = ref({ rating: 5, comment: '', reviewerName: '' })
+const hoverStar = ref(0)
+
+const isMyReview = computed(() => !!myReview.value)
+
+// ── Carga inicial ─────────────────────────────────────────────────────────────
 onMounted(async () => {
-  const [p, r] = await Promise.all([
+  const [p, r, mine] = await Promise.all([
     store.getProvider(route.params.id),
-    fetch(`${API}/reviews/provider/${route.params.id}`).then((res) => res.json()),
+    fetch(`${API}/reviews/provider/${route.params.id}`).then(res => res.json()),
+    fetch(`${API}/reviews/provider/${route.params.id}/device/${deviceId}`).then(res => res.json()),
   ])
   provider.value = p
-  reviews.value = r
+  reviews.value  = Array.isArray(r) ? r : []
+  if (mine) {
+    myReview.value = mine
+    draft.value = { rating: mine.rating, comment: mine.comment || '', reviewerName: mine.reviewerName || '' }
+  }
 })
 
+// ── Stars helpers ─────────────────────────────────────────────────────────────
+const starClass = (n) => {
+  const active = hoverStar.value || draft.value.rating
+  return n <= active ? 'text-yellow-400' : 'text-gray-300'
+}
+
+// ── Enviar / editar reseña ────────────────────────────────────────────────────
 const submitReview = async () => {
+  if (!draft.value.reviewerName.trim()) { reviewError.value = 'Escribe tu nombre'; return }
   submitting.value = true
   reviewError.value = ''
+  reviewOk.value = false
   try {
-    const res = await auth.authFetch(`${API}/reviews`, {
+    const res = await fetch(`${API}/reviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ providerId: route.params.id, ...newReview.value }),
+      body: JSON.stringify({
+        providerId:   route.params.id,
+        rating:       draft.value.rating,
+        comment:      draft.value.comment,
+        reviewerName: draft.value.reviewerName,
+        deviceId,
+      }),
     })
-    if (res.ok) {
-      const r = await res.json()
-      reviews.value.unshift(r)
-      newReview.value = { rating: 5, comment: '' }
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'Error')
+
+    // Actualizar lista
+    if (myReview.value) {
+      const idx = reviews.value.findIndex(r => r._id === myReview.value._id)
+      if (idx !== -1) reviews.value[idx] = data
+      else reviews.value.unshift(data)
     } else {
-      reviewError.value = (await res.json()).message
+      reviews.value.unshift(data)
     }
+    myReview.value = data
+    isEditing.value = false
+    reviewOk.value = true
+    // Refrescar rating del proveedor
+    const fresh = await store.getProvider(route.params.id)
+    if (fresh) provider.value = fresh
+  } catch (e) {
+    reviewError.value = e.message
   } finally {
     submitting.value = false
   }
 }
+
+// ── Calificación promedio visual ──────────────────────────────────────────────
+const avgStars = computed(() => {
+  const avg = provider.value?.rating?.average || 0
+  return Array.from({ length: 5 }, (_, i) => {
+    const filled = i + 1 <= Math.floor(avg)
+    const half   = !filled && i < avg
+    return { filled, half }
+  })
+})
 </script>
 
 <template>
-  <main v-if="provider" class="max-w-3xl mx-auto py-10 px-4">
-    <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl font-bold text-blue-600 shrink-0">
-          {{ provider.businessName?.[0] }}
+  <!-- Lightbox -->
+  <Teleport to="body">
+    <div v-if="lightbox" @click="lightbox = null"
+      class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
+      <img :src="lightbox" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl object-contain" />
+    </div>
+  </Teleport>
+
+  <main v-if="provider" class="max-w-3xl mx-auto py-8 px-4 space-y-5">
+
+    <!-- ── Tarjeta principal ── -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+
+      <!-- Banner verde superior -->
+      <div class="h-24 bg-gradient-to-br from-brand-green to-brand-dark relative">
+        <div class="absolute -bottom-8 left-6">
+          <div v-if="provider.profilePhoto?.url"
+            class="w-16 h-16 rounded-full ring-4 ring-white overflow-hidden shadow">
+            <img :src="provider.profilePhoto.url" class="w-full h-full object-cover" />
+          </div>
+          <div v-else
+            class="w-16 h-16 rounded-full ring-4 ring-white bg-brand-green/20 flex items-center justify-center text-2xl font-bold text-white shadow">
+            {{ provider.businessName?.[0] }}
+          </div>
         </div>
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">{{ provider.businessName }}</h1>
-          <p class="text-gray-500">{{ provider.city }}{{ provider.address ? ` · ${provider.address}` : '' }}</p>
+        <!-- Disponibilidad badge -->
+        <span
+          :class="provider.availability === 'available' ? 'bg-green-400' : 'bg-gray-400'"
+          class="absolute top-3 right-4 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+          {{ provider.availability === 'available' ? '● Disponible' : '○ No disponible' }}
+        </span>
+      </div>
+
+      <div class="pt-12 px-6 pb-6">
+        <h1 class="text-xl font-bold text-gray-900">{{ provider.businessName }}</h1>
+        <p class="text-sm text-gray-500 mt-0.5">
+          📍 {{ provider.city }}{{ provider.address ? ` · ${provider.address}` : '' }}
+        </p>
+
+        <!-- Estrellas promedio -->
+        <div class="flex items-center gap-2 mt-3">
+          <div class="flex gap-0.5">
+            <span v-for="(s, i) in avgStars" :key="i" class="text-xl"
+              :class="s.filled ? 'text-yellow-400' : s.half ? 'text-yellow-300' : 'text-gray-200'">★</span>
+          </div>
+          <span class="text-sm font-semibold text-gray-700">{{ provider.rating?.average || 0 }}</span>
+          <span class="text-sm text-gray-400">({{ provider.rating?.count || 0 }} reseñas)</span>
         </div>
-      </div>
-      <p class="text-gray-700 mb-4">{{ provider.description }}</p>
-      <div class="flex flex-wrap gap-2 mb-4">
-        <span v-for="cat in provider.categories" :key="cat" class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">{{ cat }}</span>
-      </div>
-      <div class="flex items-center gap-4">
-        <span class="text-yellow-500 font-semibold">★ {{ provider.rating?.average }} ({{ provider.rating?.count }})</span>
-        <a :href="`tel:${provider.phone}`" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
-          📞 {{ provider.phone }}
-        </a>
+
+        <p class="text-gray-600 text-sm mt-4 leading-relaxed">{{ provider.description }}</p>
+
+        <!-- Categorías -->
+        <div class="flex flex-wrap gap-2 mt-4">
+          <span v-for="cat in provider.categories" :key="cat"
+            class="bg-brand-green/10 text-brand-green text-xs px-3 py-1 rounded-full font-medium">
+            {{ cat }}
+          </span>
+        </div>
+
+        <!-- CTA llamar -->
+        <div class="mt-5">
+          <a :href="`tel:${provider.phone}`"
+            class="inline-flex items-center gap-2 bg-brand-green text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-brand-lightGreen transition-colors shadow-sm">
+            📞 Llamar · {{ provider.phone }}
+          </a>
+        </div>
       </div>
     </div>
 
-    <div v-if="provider.photos?.length" class="grid grid-cols-3 gap-2 mb-6">
-      <img v-for="p in provider.photos" :key="p.publicId" :src="p.url" class="rounded-lg object-cover h-32 w-full" />
-    </div>
-
-    <div class="bg-white rounded-xl shadow p-6">
-      <h2 class="text-lg font-semibold mb-4">Reseñas ({{ reviews.length }})</h2>
-
-      <div v-if="auth.isLoggedIn && auth.user?.role === 'client'" class="mb-6 border-b pb-5">
-        <h3 class="text-sm font-medium mb-3 text-gray-700">Escribe una reseña</h3>
-        <div v-if="reviewError" class="text-red-500 text-xs mb-2">{{ reviewError }}</div>
-        <select v-model.number="newReview.rating" class="border rounded px-2 py-1 mb-2 text-sm">
-          <option v-for="n in [5, 4, 3, 2, 1]" :key="n" :value="n">{{ '★'.repeat(n) }} ({{ n }})</option>
-        </select>
-        <textarea
-          v-model="newReview.comment"
-          rows="3"
-          class="w-full border rounded-lg px-3 py-2 text-sm block"
-          placeholder="Cuéntanos tu experiencia..."
-        ></textarea>
-        <button
-          @click="submitReview"
-          :disabled="submitting"
-          class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
-        >
-          {{ submitting ? 'Enviando...' : 'Enviar reseña' }}
-        </button>
-      </div>
-
-      <div v-if="reviews.length === 0" class="text-gray-400 text-sm">Sin reseñas aún.</div>
-      <div v-for="r in reviews" :key="r._id" class="py-3 border-b last:border-0">
-        <div class="flex justify-between mb-1">
-          <span class="font-medium text-sm">{{ r.clientId?.name || 'Cliente' }}</span>
-          <span class="text-yellow-500 text-sm">{{ '★'.repeat(r.rating) }}</span>
+    <!-- ── Galería de fotos ── -->
+    <div v-if="provider.photos?.length" class="bg-white rounded-2xl shadow-sm p-4">
+      <h2 class="text-sm font-semibold text-gray-700 mb-3">Trabajos realizados</h2>
+      <div class="grid grid-cols-3 gap-2">
+        <div v-for="(p, i) in provider.photos" :key="p.publicId || i"
+          @click="lightbox = p.url"
+          class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
+          <img :src="p.url" class="w-full h-full object-cover" />
         </div>
-        <p class="text-gray-600 text-sm">{{ r.comment }}</p>
       </div>
     </div>
+
+    <!-- ── Reseñas ── -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="text-base font-bold text-gray-800 mb-5">
+        Reseñas
+        <span class="text-brand-green">({{ reviews.length }})</span>
+      </h2>
+
+      <!-- Formulario reseña -->
+      <div class="mb-6 pb-6 border-b border-gray-100">
+        <!-- Ya tiene reseña y no está editando -->
+        <div v-if="isMyReview && !isEditing"
+          class="bg-brand-green/5 border border-brand-green/20 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-brand-green">Tu reseña</p>
+            <button @click="isEditing = true; reviewOk = false"
+              class="text-xs text-brand-green hover:underline">Editar</button>
+          </div>
+          <div class="flex gap-0.5 mb-1">
+            <span v-for="n in 5" :key="n" class="text-base"
+              :class="n <= myReview.rating ? 'text-yellow-400' : 'text-gray-200'">★</span>
+          </div>
+          <p class="text-sm text-gray-600">{{ myReview.comment || '(sin comentario)' }}</p>
+          <div v-if="reviewOk" class="text-xs text-brand-green mt-2">✅ Reseña actualizada</div>
+        </div>
+
+        <!-- Formulario (nueva o edición) -->
+        <div v-else>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">
+            {{ isMyReview ? 'Editar tu reseña' : 'Escribe una reseña' }}
+          </h3>
+
+          <div v-if="reviewError" class="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg mb-3">{{ reviewError }}</div>
+
+          <!-- Nombre -->
+          <input v-model="draft.reviewerName" placeholder="Tu nombre *"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-green" />
+
+          <!-- Estrellas clickeables -->
+          <div class="flex gap-1 mb-3">
+            <button v-for="n in 5" :key="n" type="button"
+              @click="draft.rating = n"
+              @mouseenter="hoverStar = n"
+              @mouseleave="hoverStar = 0"
+              class="text-3xl transition-colors leading-none"
+              :class="starClass(n)">★</button>
+            <span class="text-sm text-gray-500 self-center ml-2">{{ draft.rating }}/5</span>
+          </div>
+
+          <!-- Comentario -->
+          <textarea v-model="draft.comment" rows="3"
+            placeholder="Cuéntanos tu experiencia..."
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
+          ></textarea>
+
+          <div class="flex gap-2 mt-3">
+            <button @click="submitReview" :disabled="submitting"
+              class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors">
+              {{ submitting ? 'Enviando...' : isMyReview ? 'Guardar cambios' : 'Publicar reseña' }}
+            </button>
+            <button v-if="isMyReview" @click="isEditing = false"
+              class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500 hover:border-brand-green hover:text-brand-green transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de reseñas -->
+      <div v-if="reviews.length === 0" class="text-center py-6 text-gray-400 text-sm">
+        Aún no hay reseñas. ¡Sé el primero!
+      </div>
+      <div v-for="r in reviews" :key="r._id"
+        class="py-4 border-b border-gray-50 last:border-0">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center text-sm font-bold text-brand-green shrink-0">
+              {{ (r.reviewerName || r.clientId?.name || 'C')[0].toUpperCase() }}
+            </div>
+            <span class="text-sm font-medium text-gray-800">
+              {{ r.reviewerName || r.clientId?.name || 'Cliente' }}
+            </span>
+          </div>
+          <div class="flex gap-0.5 shrink-0">
+            <span v-for="n in 5" :key="n" class="text-sm"
+              :class="n <= r.rating ? 'text-yellow-400' : 'text-gray-200'">★</span>
+          </div>
+        </div>
+        <p v-if="r.comment" class="text-sm text-gray-600 ml-10">{{ r.comment }}</p>
+        <p class="text-xs text-gray-400 ml-10 mt-1">
+          {{ new Date(r.createdAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) }}
+        </p>
+      </div>
+    </div>
+
   </main>
-  <div v-else class="text-center py-16 text-gray-400">Cargando...</div>
+  <div v-else class="flex items-center justify-center py-24 text-gray-400">
+    <span class="animate-spin mr-2">⏳</span> Cargando...
+  </div>
 </template>
