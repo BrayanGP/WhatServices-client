@@ -87,6 +87,47 @@ onMounted(async () => {
   } catch { /* ignore */ }
 })
 
+// Autocompletado de dirección con Nominatim (OpenStreetMap, sin API key)
+const addressSuggestions = ref([])
+const addressLoading = ref(false)
+const addressFocused = ref(false)
+let addressDebounce = null
+
+const onAddressInput = () => {
+  clearTimeout(addressDebounce)
+  addressSuggestions.value = []
+  if (form.value.address.length < 4) return
+  addressDebounce = setTimeout(async () => {
+    addressLoading.value = true
+    try {
+      const q = encodeURIComponent(form.value.address)
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=6&countrycodes=mx`,
+        { headers: { 'Accept-Language': 'es' } }
+      )
+      const data = await res.json()
+      addressSuggestions.value = data.map(p => ({
+        label: p.display_name,
+        city: p.address?.city || p.address?.town || p.address?.village || p.address?.municipality || '',
+        postalCode: p.address?.postcode || '',
+        lat: parseFloat(p.lat),
+        lng: parseFloat(p.lon),
+      }))
+    } catch { /* sin sugerencias */ }
+    finally { addressLoading.value = false }
+  }, 450)
+}
+
+const selectAddress = (s) => {
+  form.value.address    = s.label
+  form.value.city       = s.city       || form.value.city
+  form.value.postalCode = s.postalCode || form.value.postalCode
+  form.value.lat        = s.lat
+  form.value.lng        = s.lng
+  addressSuggestions.value = []
+  geoStatus.value = 'captured'
+}
+
 const captureLocation = () => {
   if (!navigator.geolocation) { geoStatus.value = 'Tu dispositivo no soporta geolocalización.'; return }
   geoLoading.value = true
@@ -257,12 +298,38 @@ const uploadPhotos = async () => {
         <div class="space-y-2">
           <p class="text-sm font-medium text-gray-700">Ubicación</p>
 
-          <!-- Input de dirección manual -->
-          <input
-            v-model="form.address"
-            placeholder="Escribe tu dirección (calle, colonia, ciudad)"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-          />
+          <!-- Input de dirección con autocompletado -->
+          <div class="relative">
+            <div class="relative">
+              <input
+                v-model="form.address"
+                placeholder="Escribe tu dirección (calle, colonia, ciudad)"
+                class="w-full border rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                autocomplete="off"
+                @input="onAddressInput"
+                @focus="addressFocused = true"
+                @blur="setTimeout(() => { addressFocused = false; addressSuggestions = [] }, 200)"
+              />
+              <span v-if="addressLoading" class="absolute right-2.5 top-2.5 text-gray-400 text-xs animate-spin">⏳</span>
+            </div>
+
+            <!-- Sugerencias -->
+            <ul
+              v-if="addressSuggestions.length"
+              class="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto"
+            >
+              <li
+                v-for="(s, i) in addressSuggestions" :key="i"
+                @mousedown.prevent="selectAddress(s)"
+                class="px-4 py-2.5 text-sm cursor-pointer hover:bg-brand-green/5 border-b border-gray-50 last:border-0"
+              >
+                <p class="text-gray-800 truncate">{{ s.label }}</p>
+                <p v-if="s.city || s.postalCode" class="text-xs text-gray-400 mt-0.5">
+                  {{ [s.city, s.postalCode].filter(Boolean).join(' · ') }}
+                </p>
+              </li>
+            </ul>
+          </div>
 
           <!-- Botón usar ubicación actual -->
           <button
