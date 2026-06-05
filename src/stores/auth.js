@@ -16,12 +16,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('user', JSON.stringify(userData))
   }
 
-  const login = async (email, password) => {
+  // credentials: { phone, password } (cliente) o { email, password }
+  const login = async (credentials) => {
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(credentials),
     })
     if (!res.ok) throw new Error((await res.json()).message)
     const data = await res.json()

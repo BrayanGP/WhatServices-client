@@ -7,20 +7,32 @@ import miLogo from '../assets/logoWhatServices.png'
 const API = import.meta.env.VITE_API_URL || '/api'
 const router = useRouter()
 const auth = useAuthStore()
-const email = ref('')
+const loginDial = ref('+52')
+const loginPhone = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 
+// Captcha simple (matemático)
+const cA = ref(0)
+const cB = ref(0)
+const cAns = ref('')
+const genCaptcha = () => { cA.value = Math.floor(Math.random() * 8) + 1; cB.value = Math.floor(Math.random() * 8) + 1; cAns.value = '' }
+genCaptcha()
+const onLoginPhone = () => { loginPhone.value = loginPhone.value.replace(/\D/g, '').slice(0, 10) }
+
 const submit = async () => {
-  loading.value = true
   error.value = ''
+  if (loginPhone.value.length < 10) { error.value = 'Ingresa tu teléfono (10 dígitos)'; return }
+  if (Number(cAns.value) !== cA.value + cB.value) { error.value = 'Captcha incorrecto'; genCaptcha(); return }
+  loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login({ phone: `${loginDial.value}${loginPhone.value}`, password: password.value })
     router.push('/')
   } catch (e) {
     error.value = e.message
+    genCaptcha()
   } finally {
     loading.value = false
   }
@@ -114,18 +126,31 @@ const doReset = async () => {
       <div class="flex flex-col items-center mb-6">
         <img :src="miLogo" alt="WhatServices" class="h-12 w-auto object-contain mb-2" />
         <h1 class="text-2xl font-bold text-brand-dark">Ingresar</h1>
-        <p class="text-sm text-gray-500">Accede a tu cuenta de profesional</p>
+        <p class="text-sm text-gray-500">Accede con tu teléfono</p>
       </div>
 
       <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-4">{{ error }}</div>
 
-      <input v-model="email" type="email" placeholder="Correo electrónico"
-        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+      <div class="flex gap-2 mb-3">
+        <select v-model="loginDial" class="border border-gray-200 rounded-lg px-2 py-2.5 text-sm bg-white shrink-0 w-24 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen">
+          <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
+        </select>
+        <input v-model="loginPhone" @input="onLoginPhone" inputmode="numeric" maxlength="10" placeholder="Teléfono"
+          class="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+      </div>
       <div class="relative mb-2">
         <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Contraseña" @keyup.enter="submit"
           class="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
         <button type="button" @click="showPassword = !showPassword" tabindex="-1"
           class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">{{ showPassword ? '🙈' : '👁️' }}</button>
+      </div>
+
+      <!-- Captcha -->
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-sm text-gray-600 shrink-0">¿Cuánto es <b>{{ cA }} + {{ cB }}</b>?</span>
+        <input v-model="cAns" inputmode="numeric" placeholder="Resultado" @keyup.enter="submit"
+          class="flex-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+        <button type="button" @click="genCaptcha" title="Otro reto" class="text-gray-400 hover:text-gray-600">🔄</button>
       </div>
 
       <div class="text-right mb-4">
