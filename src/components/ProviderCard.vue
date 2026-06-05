@@ -12,7 +12,7 @@ const hideOnError = (e) => { e.target.style.display = 'none' }
     @click="router.push(`/providers/${provider._id}`)"
     class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition-shadow overflow-hidden"
   >
-    <div class="flex items-stretch min-h-[130px]">
+    <div class="flex items-stretch h-[160px]">
 
       <!-- Cuadrícula de fotos lateral izquierda -->
       <div
