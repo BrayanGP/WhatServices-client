@@ -266,8 +266,26 @@ const submit = async () => {
   }
 }
 
-const onFiles   = (e) => { photos.value = Array.from(e.target.files).slice(0, 5) }
-const onProfile = (e) => { profilePhoto.value = e.target.files[0] || null }
+// Previews
+const profilePreview = ref(null)
+const photoPreviews  = ref([])
+
+const onProfile = (e) => {
+  const file = e.target.files[0] || null
+  profilePhoto.value = file
+  profilePreview.value = file ? URL.createObjectURL(file) : null
+}
+
+const onFiles = (e) => {
+  const files = Array.from(e.target.files).slice(0, 5)
+  photos.value = files
+  photoPreviews.value = files.map(f => URL.createObjectURL(f))
+}
+
+const removeWorkPhoto = (i) => {
+  photos.value = photos.value.filter((_, idx) => idx !== i)
+  photoPreviews.value = photoPreviews.value.filter((_, idx) => idx !== i)
+}
 
 const uploadPhotos = async () => {
   uploading.value = true
@@ -573,23 +591,91 @@ const uploadPhotos = async () => {
       </div>
 
       <!-- ── Paso 2 ── -->
-      <div v-else-if="step === 2" class="space-y-4">
-        <p class="text-sm text-gray-600">¡Cuenta creada! 🎉</p>
-        <div>
-          <label class="text-sm font-medium text-gray-700 block mb-1">Foto de perfil</label>
-          <input type="file" accept="image/*" @change="onProfile" class="w-full text-sm" />
+      <div v-else-if="step === 2" class="space-y-5">
+        <div class="text-center">
+          <p class="text-lg font-bold text-brand-dark">¡Cuenta creada! 🎉</p>
+          <p class="text-sm text-gray-500 mt-1">Agrega fotos para que los clientes confíen más en ti.</p>
         </div>
+
+        <!-- Foto de perfil -->
         <div>
-          <label class="text-sm font-medium text-gray-700 block mb-1">Fotos de tus trabajos (hasta 5)</label>
-          <input type="file" accept="image/*" multiple @change="onFiles" class="w-full text-sm" />
+          <p class="text-sm font-semibold text-gray-700 mb-2">Foto de perfil</p>
+          <div class="flex items-center gap-4">
+            <!-- Preview -->
+            <div class="shrink-0 w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+              <img v-if="profilePreview" :src="profilePreview" class="w-full h-full object-cover" />
+              <span v-else class="text-3xl text-gray-300">👤</span>
+            </div>
+            <!-- Botón -->
+            <label class="flex-1 cursor-pointer">
+              <div class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-dashed transition-all duration-200"
+                :class="profilePreview
+                  ? 'border-brand-green bg-brand-green/5 text-brand-green'
+                  : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5'"
+              >
+                <span>{{ profilePreview ? '🔄' : '📷' }}</span>
+                <span class="text-sm font-medium">{{ profilePreview ? 'Cambiar foto' : 'Seleccionar foto' }}</span>
+              </div>
+              <input type="file" accept="image/*" @change="onProfile" class="hidden" />
+            </label>
+          </div>
         </div>
-        <p v-if="photos.length" class="text-xs text-gray-500">{{ photos.length }} foto(s) seleccionada(s)</p>
-        <div class="flex gap-2">
-          <button @click="uploadPhotos" :disabled="uploading"
-            class="flex-1 bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-medium">
-            {{ uploading ? 'Subiendo...' : 'Subir y finalizar' }}
+
+        <!-- Fotos de trabajos -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-gray-700">Fotos de tus trabajos</p>
+            <span class="text-xs text-gray-400">{{ photos.length }}/5</span>
+          </div>
+
+          <!-- Previews de trabajos -->
+          <div v-if="photoPreviews.length" class="grid grid-cols-3 gap-2 mb-3">
+            <div
+              v-for="(src, i) in photoPreviews" :key="i"
+              class="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
+            >
+              <img :src="src" class="w-full h-full object-cover" />
+              <button
+                type="button"
+                @click="removeWorkPhoto(i)"
+                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none"
+              >✕</button>
+            </div>
+            <!-- Slot para agregar más (si hay menos de 5) -->
+            <label v-if="photos.length < 5" class="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
+              <span class="text-2xl text-gray-300">+</span>
+              <span class="text-xs text-gray-400 mt-1">Agregar</span>
+              <input type="file" accept="image/*" multiple @change="onFiles" class="hidden" />
+            </label>
+          </div>
+
+          <!-- Botón inicial (sin fotos aún) -->
+          <label v-else class="cursor-pointer block">
+            <div class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5 transition-all">
+              <span>🖼️</span>
+              <span class="text-sm font-medium">Seleccionar fotos (hasta 5)</span>
+            </div>
+            <input type="file" accept="image/*" multiple @change="onFiles" class="hidden" />
+          </label>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="flex gap-3 pt-1">
+          <button
+            @click="uploadPhotos"
+            :disabled="uploading"
+            class="flex-1 bg-brand-green text-white py-2.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-60"
+            :class="!uploading ? 'hover:bg-brand-lightGreen' : ''"
+          >
+            <span v-if="uploading" class="flex items-center justify-center gap-2">
+              <span class="animate-spin">⏳</span> Subiendo...
+            </span>
+            <span v-else>Subir fotos y finalizar</span>
           </button>
-          <button @click="step = 3; done = true" class="text-sm text-gray-400 px-3">Omitir</button>
+          <button
+            @click="step = 3; done = true"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors"
+          >Omitir</button>
         </div>
       </div>
 
