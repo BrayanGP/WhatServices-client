@@ -69,7 +69,9 @@ const validators = {
   city:         v => v?.trim().length > 0 || 'Campo requerido',
   postalCode:   v => v?.trim().length > 0 || 'Campo requerido',
   description:  v => v?.trim().length > 0 || 'Campo requerido',
-  address:      v => v?.trim().length > 0 || 'Escribe o selecciona una dirección',
+  address:      v => locMode.value === 'gps'
+    ? (form.value.lat != null || 'Captura tu ubicación GPS')
+    : (v?.trim().length > 0 || 'Escribe o selecciona una dirección'),
 }
 
 const fieldError = (field) => {
@@ -198,6 +200,23 @@ const selectAddress = (s) => {
   touch('address')
   touch('city')
   touch('postalCode')
+}
+
+// ── Modo de ubicación: 'address' | 'gps' ─────────────────────────────────────
+const locMode = ref('address')
+
+const setLocMode = (mode) => {
+  locMode.value = mode
+  // Limpiar el modo que se abandona
+  if (mode === 'gps') {
+    form.value.address = ''
+    addressSuggestions.value = []
+  } else {
+    form.value.lat = null
+    form.value.lng = null
+    geoStatus.value = ''
+  }
+  touch('address')
 }
 
 // ── GPS ───────────────────────────────────────────────────────────────────────
@@ -464,11 +483,35 @@ const uploadPhotos = async () => {
         </div>
 
         <!-- Ubicación -->
-        <div class="space-y-2">
+        <div class="space-y-3">
           <p class="text-sm font-medium text-gray-700">Ubicación *</p>
 
-          <!-- Input con autocompletado -->
-          <div class="relative">
+          <!-- Switch de modo -->
+          <div class="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl">
+            <button
+              type="button"
+              @click="setLocMode('address')"
+              class="flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="locMode === 'address'
+                ? 'bg-white text-brand-green shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'"
+            >
+              <span>✏️</span> Escribir dirección
+            </button>
+            <button
+              type="button"
+              @click="setLocMode('gps')"
+              class="flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="locMode === 'gps'
+                ? 'bg-white text-brand-green shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'"
+            >
+              <span>📍</span> Ubicación actual
+            </button>
+          </div>
+
+          <!-- Panel: dirección manual -->
+          <div v-if="locMode === 'address'" class="relative">
             <input
               v-model="form.address"
               placeholder="Escribe tu dirección (calle, colonia, ciudad)"
@@ -492,34 +535,33 @@ const uploadPhotos = async () => {
                 </p>
               </li>
             </ul>
-          </div>
-          <p v-if="fieldError('address')" class="text-xs text-red-500">{{ fieldError('address') }}</p>
-
-          <!-- Separador -->
-          <div class="flex items-center gap-3">
-            <div class="flex-1 border-t border-gray-200"></div>
-            <span class="text-xs text-gray-400 font-medium">ó</span>
-            <div class="flex-1 border-t border-gray-200"></div>
+            <p v-if="fieldError('address')" class="text-xs text-red-500 mt-1">{{ fieldError('address') }}</p>
           </div>
 
-          <!-- Botón GPS -->
-          <button type="button" @click="captureLocation" :disabled="geoLoading"
-            class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all duration-200"
-            :class="geoStatus === 'captured'
-              ? 'border-brand-green bg-brand-green/5 text-brand-green'
-              : geoStatus === 'error'
-                ? 'border-red-300 bg-red-50 text-red-500'
-                : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5'"
-          >
-            <span v-if="geoLoading" class="animate-spin">⏳</span>
-            <span v-else-if="geoStatus === 'captured'">✅</span>
-            <span v-else-if="geoStatus === 'error'">⚠️</span>
-            <span v-else>📍</span>
-            <span>{{ geoLoading ? 'Obteniendo ubicación...'
-              : geoStatus === 'captured' ? 'Ubicación capturada correctamente'
-              : geoStatus === 'error' ? 'No se pudo obtener la ubicación'
-              : 'Usar mi ubicación actual' }}</span>
-          </button>
+          <!-- Panel: GPS -->
+          <div v-else class="space-y-2">
+            <button
+              type="button"
+              @click="captureLocation"
+              :disabled="geoLoading"
+              class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200"
+              :class="geoStatus === 'captured'
+                ? 'border-brand-green bg-brand-green/5 text-brand-green'
+                : geoStatus === 'error'
+                  ? 'border-red-300 bg-red-50 text-red-500'
+                  : 'border-dashed border-gray-300 bg-gray-50 text-gray-600 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5'"
+            >
+              <span v-if="geoLoading" class="animate-spin text-lg">⏳</span>
+              <span v-else-if="geoStatus === 'captured'" class="text-lg">✅</span>
+              <span v-else-if="geoStatus === 'error'" class="text-lg">⚠️</span>
+              <span v-else class="text-lg">📍</span>
+              <span>{{ geoLoading ? 'Obteniendo ubicación...'
+                : geoStatus === 'captured' ? 'Ubicación capturada correctamente'
+                : geoStatus === 'error' ? 'No se pudo obtener la ubicación — intenta de nuevo'
+                : 'Toca para capturar tu ubicación actual' }}</span>
+            </button>
+            <p v-if="fieldError('address') && touched.address" class="text-xs text-red-500">{{ fieldError('address') }}</p>
+          </div>
         </div>
 
         <button @click="submit" :disabled="loading"
