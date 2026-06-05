@@ -1,21 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 import { useProvidersStore } from '../stores/providers'
 import { useAuthStore } from '../stores/auth'
 import ProviderCard from '../components/ProviderCard.vue'
 
-const router = useRouter()
 const store = useProvidersStore()
 const auth = useAuthStore()
-const searchCategory = ref('')
-const searchCity = ref('')
 
 onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
-
-const search = () => {
-  router.push({ path: '/providers', query: { category: searchCategory.value, city: searchCity.value } })
-}
 </script>
 
 <template>
@@ -35,15 +27,11 @@ const search = () => {
         <h1 class="text-4xl font-bold mb-3">Encuentra servicios locales</h1>
         <p class="text-brand-lightGreen/90 mb-8 text-lg">Carpinteros, plomeros, electricistas y más en tu ciudad</p>
 
-        <div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2">
-          <input v-model="searchCategory" placeholder="¿Qué servicio necesitas?"
-            class="flex-1 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" @keyup.enter="search" />
-          <input v-model="searchCity" placeholder="Ciudad"
-            class="sm:w-44 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" @keyup.enter="search" />
-          <button @click="search"
-            class="bg-brand-lightGreen text-brand-dark font-bold px-6 py-3 rounded-lg hover:bg-white hover:text-brand-green transition-all duration-200 shadow-md">
-            Buscar
-          </button>
+        <div class="flex justify-center">
+          <router-link to="/providers"
+            class="bg-brand-lightGreen text-brand-dark font-bold text-xl px-10 py-4 rounded-xl hover:bg-white hover:text-brand-green transition-all duration-200 shadow-lg">
+            Buscar servicios
+          </router-link>
         </div>
 
         <router-link to="/unete" class="inline-block mt-6 text-brand-lightGreen underline hover:text-white text-sm">
