@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
 import ProviderCard from '../components/ProviderCard.vue'
+
+const API = import.meta.env.VITE_API_URL || '/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +13,17 @@ const page = ref(1)
 const searchCategory = ref('')
 const searchCity = ref('')
 const searchCp = ref('')
+
+// Selector de categorías (buscable)
+const categories = ref([])
+const catOpen = ref(false)
+const catSearch = ref('')
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+const filteredCats = computed(() => {
+  const q = norm(catSearch.value)
+  return q ? categories.value.filter((c) => norm(c.name).includes(q)) : categories.value
+})
+const selectCat = (name) => { searchCategory.value = name; catOpen.value = false; catSearch.value = ''; search() }
 
 const load = () => {
   page.value = 1
@@ -37,7 +50,10 @@ const search = () => {
   })
 }
 
-onMounted(load)
+onMounted(async () => {
+  try { const r = await fetch(`${API}/categories`); categories.value = await r.json() } catch (e) { /* noop */ }
+  load()
+})
 watch(() => route.query, load)
 </script>
 
@@ -46,12 +62,34 @@ watch(() => route.query, load)
     <!-- Barra de filtro -->
     <section class="bg-gradient-to-br from-brand-green to-brand-dark text-white py-10 px-4">
       <div class="max-w-3xl mx-auto flex flex-col sm:flex-row gap-2">
-        <input
-          v-model="searchCategory"
-          placeholder="¿Qué servicio necesitas?"
-          class="flex-1 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen"
-          @keyup.enter="search"
-        />
+        <!-- Selector de servicio (categorías) -->
+        <div class="relative flex-1">
+          <button type="button" @click="catOpen = !catOpen"
+            class="w-full px-4 py-3 rounded-lg bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-brand-lightGreen">
+            <span :class="searchCategory ? 'text-gray-800' : 'text-gray-400'">{{ searchCategory || '¿Qué servicio necesitas?' }}</span>
+            <span class="text-gray-400 text-xs">{{ catOpen ? '▲' : '▼' }}</span>
+          </button>
+          <div v-if="catOpen" class="fixed inset-0 z-10" @click="catOpen = false"></div>
+          <div v-if="catOpen" class="absolute z-20 mt-1 w-full bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden">
+            <div class="p-2 border-b border-gray-100">
+              <input v-model="catSearch" placeholder="Buscar categoría..."
+                class="w-full px-3 py-2 rounded-md border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-lightGreen" />
+            </div>
+            <ul class="max-h-60 overflow-y-auto text-gray-800">
+              <li>
+                <button type="button" @click="selectCat('')" class="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-brand-light/60">Cualquier servicio</button>
+              </li>
+              <li v-for="c in filteredCats" :key="c._id">
+                <button type="button" @click="selectCat(c.name)"
+                  class="w-full text-left px-4 py-2 text-sm hover:bg-brand-light/60 flex items-center gap-2"
+                  :class="searchCategory === c.name ? 'bg-brand-green/10 text-brand-medium font-medium' : ''">
+                  <span>{{ c.icon || '🔧' }}</span> {{ c.name }}
+                </button>
+              </li>
+              <li v-if="!filteredCats.length" class="px-4 py-3 text-sm text-gray-400">Sin coincidencias</li>
+            </ul>
+          </div>
+        </div>
         <input
           v-model="searchCity"
           placeholder="Ciudad"
