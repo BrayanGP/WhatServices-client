@@ -15,14 +15,13 @@ const router = useRouter()
       <!-- Cuadrícula de fotos lateral izquierda -->
       <div
         v-if="provider.photos && provider.photos.length"
-        class="w-24 shrink-0 self-stretch grid gap-0.5"
-        :style="{ gridTemplateRows: `repeat(${Math.min(provider.photos.length, 3)}, 1fr)` }"
+        class="w-24 shrink-0 flex flex-col self-stretch gap-0.5"
       >
         <img
           v-for="(photo, i) in provider.photos.slice(0, 3)"
           :key="i"
           :src="photo.url"
-          class="w-full h-full object-cover min-h-0"
+          class="w-full flex-1 object-cover min-h-0 block"
           alt="Trabajo"
         />
       </div>
