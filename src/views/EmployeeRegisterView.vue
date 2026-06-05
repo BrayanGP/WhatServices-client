@@ -32,7 +32,7 @@ const suggestCategory = async () => {
   catError.value = ''
   catSuccess.value = ''
   try {
-    const res = await auth.authFetch(`${API}/categories/suggest`, {
+    const res = await fetch(`${API}/categories/suggest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newCat.value.name.trim(), icon: newCat.value.icon.trim() }),
@@ -167,12 +167,22 @@ const uploadPhotos = async () => {
               class="text-xs text-brand-green border border-brand-green px-2 py-1 rounded-full hover:bg-brand-green hover:text-white transition-colors"
             >+ Nueva categoría</button>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="c in categories" :key="c._id" type="button" @click="toggleCat(c.name)"
-              class="text-sm px-3 py-1.5 rounded-full border"
-              :class="form.categories.includes(c.name) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300'"
-            >{{ c.icon }} {{ c.name }}</button>
+          <select
+            multiple
+            v-model="form.categories"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green bg-white"
+            size="5"
+          >
+            <option v-for="c in categories" :key="c._id" :value="c.name">
+              {{ c.icon }} {{ c.name }}
+            </option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1">Mantén presionado Ctrl (o Cmd en Mac) para seleccionar varias.</p>
+          <div v-if="form.categories.length" class="flex flex-wrap gap-1 mt-2">
+            <span
+              v-for="cat in form.categories" :key="cat"
+              class="text-xs bg-brand-green/10 text-brand-green px-2 py-0.5 rounded-full"
+            >{{ cat }}</span>
           </div>
         </div>
 
