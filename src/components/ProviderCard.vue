@@ -10,19 +10,19 @@ const router = useRouter()
     @click="router.push(`/providers/${provider._id}`)"
     class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition-shadow overflow-hidden"
   >
-    <div class="flex">
+    <div class="flex items-stretch">
 
       <!-- Cuadrícula de fotos lateral izquierda -->
       <div
         v-if="provider.photos && provider.photos.length"
-        class="w-24 shrink-0 grid gap-0.5 self-stretch"
-        :class="provider.photos.length === 1 ? 'grid-rows-1' : provider.photos.length === 2 ? 'grid-rows-2' : 'grid-rows-3'"
+        class="w-24 shrink-0 self-stretch grid gap-0.5"
+        :style="{ gridTemplateRows: `repeat(${Math.min(provider.photos.length, 3)}, 1fr)` }"
       >
         <img
           v-for="(photo, i) in provider.photos.slice(0, 3)"
           :key="i"
           :src="photo.url"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-cover min-h-0"
           alt="Trabajo"
         />
       </div>
