@@ -14,18 +14,28 @@ const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 
-// Captcha simple (matemático)
+// Captcha simple (operación aleatoria) + honeypot anti-bots
 const cA = ref(0)
 const cB = ref(0)
+const cOp = ref('+')
+const cExpected = ref(0)
 const cAns = ref('')
-const genCaptcha = () => { cA.value = Math.floor(Math.random() * 8) + 1; cB.value = Math.floor(Math.random() * 8) + 1; cAns.value = '' }
+const hp = ref('') // honeypot: debe quedar vacío
+const genCaptcha = () => {
+  cA.value = Math.floor(Math.random() * 8) + 2
+  cB.value = Math.floor(Math.random() * 8) + 2
+  cOp.value = Math.random() < 0.5 ? '+' : '×'
+  cExpected.value = cOp.value === '+' ? cA.value + cB.value : cA.value * cB.value
+  cAns.value = ''
+}
 genCaptcha()
 const onLoginPhone = () => { loginPhone.value = loginPhone.value.replace(/\D/g, '').slice(0, 10) }
 
 const submit = async () => {
   error.value = ''
+  if (hp.value) return // bot detectado (honeypot)
   if (loginPhone.value.length < 10) { error.value = 'Ingresa tu teléfono (10 dígitos)'; return }
-  if (Number(cAns.value) !== cA.value + cB.value) { error.value = 'Captcha incorrecto'; genCaptcha(); return }
+  if (Number(cAns.value) !== cExpected.value) { error.value = 'Captcha incorrecto'; genCaptcha(); return }
   loading.value = true
   try {
     await auth.login({ phone: `${loginDial.value}${loginPhone.value}`, password: password.value })
@@ -145,9 +155,12 @@ const doReset = async () => {
           class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">{{ showPassword ? '🙈' : '👁️' }}</button>
       </div>
 
+      <!-- Honeypot anti-bots (oculto) -->
+      <input v-model="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true"
+        class="absolute opacity-0 h-0 w-0 -left-[9999px]" />
       <!-- Captcha -->
       <div class="flex items-center gap-2 mb-3">
-        <span class="text-sm text-gray-600 shrink-0">¿Cuánto es <b>{{ cA }} + {{ cB }}</b>?</span>
+        <span class="text-sm text-gray-600 shrink-0">¿Cuánto es <b>{{ cA }} {{ cOp }} {{ cB }}</b>?</span>
         <input v-model="cAns" inputmode="numeric" placeholder="Resultado" @keyup.enter="submit"
           class="flex-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
         <button type="button" @click="genCaptcha" title="Otro reto" class="text-gray-400 hover:text-gray-600">🔄</button>
