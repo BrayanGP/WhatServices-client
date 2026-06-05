@@ -3,6 +3,8 @@ import { useRouter } from 'vue-router'
 
 const props = defineProps({ provider: Object })
 const router = useRouter()
+
+const hideOnError = (e) => { e.target.style.display = 'none' }
 </script>
 
 <template>
@@ -10,26 +12,27 @@ const router = useRouter()
     @click="router.push(`/providers/${provider._id}`)"
     class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition-shadow overflow-hidden"
   >
-    <div class="flex items-stretch">
+    <div class="flex items-stretch min-h-[130px]">
 
       <!-- Cuadrícula de fotos lateral izquierda -->
       <div
         v-if="provider.photos && provider.photos.length"
-        class="w-24 shrink-0 flex flex-col self-stretch gap-0.5"
+        class="w-24 shrink-0 flex flex-col overflow-hidden"
       >
         <img
           v-for="(photo, i) in provider.photos.slice(0, 3)"
           :key="i"
           :src="photo.url"
-          class="w-full flex-1 object-cover min-h-0 block"
+          class="w-full flex-1 object-cover min-h-0"
           alt="Trabajo"
+          @error="hideOnError"
         />
       </div>
 
       <!-- Placeholder si no hay fotos -->
       <div
         v-else
-        class="w-24 shrink-0 bg-gray-100 flex items-center justify-center text-gray-300 text-3xl self-stretch"
+        class="w-24 shrink-0 bg-gray-100 flex items-center justify-center text-gray-300 text-3xl"
       >
         📷
       </div>
@@ -44,6 +47,7 @@ const router = useRouter()
             :src="provider.profilePhoto.url"
             class="w-9 h-9 rounded-full object-cover shrink-0"
             alt=""
+            @error="hideOnError"
           />
           <div
             v-else
