@@ -1,9 +1,15 @@
 <script setup>
 import { onMounted } from 'vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation, Pagination, Autoplay } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 import { useProvidersStore } from '../stores/providers'
 import { useAuthStore } from '../stores/auth'
 import ProviderCard from '../components/ProviderCard.vue'
 
+const modules = [Navigation, Pagination, Autoplay]
 const store = useProvidersStore()
 const auth = useAuthStore()
 
@@ -45,9 +51,24 @@ onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
         <div v-else-if="store.providers.length === 0" class="text-center py-12 text-gray-400">
           Aún no hay profesionales registrados.
         </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <ProviderCard v-for="p in store.providers" :key="p._id" :provider="p" />
-        </div>
+        <Swiper
+          v-else
+          :modules="modules"
+          :slides-per-view="1"
+          :space-between="24"
+          :navigation="true"
+          :pagination="{ clickable: true }"
+          :autoplay="{ delay: 4000, disableOnInteraction: false }"
+          :breakpoints="{
+            640:  { slidesPerView: 2 },
+            1024: { slidesPerView: 3 },
+          }"
+          class="pb-10"
+        >
+          <SwiperSlide v-for="p in store.providers" :key="p._id">
+            <ProviderCard :provider="p" />
+          </SwiperSlide>
+        </Swiper>
         <div class="text-center mt-8">
           <router-link to="/providers" class="text-brand-green hover:text-brand-lightGreen font-semibold inline-flex items-center gap-1 transition-colors">
             Ver todos los profesionales →
