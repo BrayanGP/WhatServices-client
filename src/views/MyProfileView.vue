@@ -15,6 +15,20 @@ const saving = ref(false)
 const msg = ref('')
 const lightbox = ref(null)
 
+// Detección de cambios (dirty) y validación de categorías
+const original = ref('')
+const snap = () => JSON.stringify({
+  businessName: provider.value?.businessName || '',
+  description: provider.value?.description || '',
+  city: provider.value?.city || '',
+  postalCode: provider.value?.postalCode || '',
+  categories: [...(provider.value?.categories || [])].sort(),
+  availability: provider.value?.availability || '',
+})
+const dirty = computed(() => !!provider.value && snap() !== original.value)
+const hasCategory = computed(() => (provider.value?.categories?.length || 0) > 0)
+const canSave = computed(() => dirty.value && hasCategory.value)
+
 onMounted(async () => {
   if (!auth.isLoggedIn) { router.push('/login'); return }
   try {
@@ -25,6 +39,7 @@ onMounted(async () => {
     if (!pRes.ok) { router.push('/'); return }
     provider.value = await pRes.json()
     categories.value = await cRes.json()
+    original.value = snap()
   } finally {
     loading.value = false
   }
@@ -54,7 +69,7 @@ const save = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability }),
     })
-    if (res.ok) { provider.value = await res.json(); msg.value = '✅ Guardado' }
+    if (res.ok) { provider.value = await res.json(); original.value = snap(); msg.value = '✅ Guardado' }
     else msg.value = 'Error al guardar'
     setTimeout(() => (msg.value = ''), 2500)
   } finally { saving.value = false }
@@ -188,9 +203,10 @@ const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
             <option value="inactive">Inactivo</option>
           </select>
         </div>
+        <p v-if="!hasCategory" class="text-xs text-amber-600">⚠️ Selecciona al menos un servicio para poder guardar.</p>
         <div class="flex items-center gap-3 pt-1">
-          <button @click="save" :disabled="saving"
-            class="bg-brand-green text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors">
+          <button @click="save" :disabled="saving || !canSave"
+            class="bg-brand-green text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {{ saving ? 'Guardando...' : 'Guardar cambios' }}
           </button>
           <span class="text-sm text-gray-500">{{ msg }}</span>
