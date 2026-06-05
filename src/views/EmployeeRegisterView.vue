@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import miLogo from '../assets/logoWhatServices.png'
@@ -18,6 +18,27 @@ const photos = ref([])
 const profilePhoto = ref(null)
 const uploading = ref(false)
 const done = ref(false)
+
+// Dropdown de categorías
+const catDropdownOpen = ref(false)
+const catSearch = ref('')
+const filteredCategories = computed(() =>
+  categories.value.filter(c =>
+    c.name.toLowerCase().includes(catSearch.value.toLowerCase())
+  )
+)
+const toggleCatDropdown = () => {
+  catDropdownOpen.value = !catDropdownOpen.value
+  if (catDropdownOpen.value) catSearch.value = ''
+}
+const selectCat = (name) => {
+  const i = form.value.categories.indexOf(name)
+  if (i === -1) form.value.categories.push(name)
+  else form.value.categories.splice(i, 1)
+}
+const removeCat = (name) => {
+  form.value.categories = form.value.categories.filter(c => c !== name)
+}
 
 // Modal de nueva categoría
 const showCatModal = ref(false)
@@ -167,22 +188,69 @@ const uploadPhotos = async () => {
               class="text-xs text-brand-green border border-brand-green px-2 py-1 rounded-full hover:bg-brand-green hover:text-white transition-colors"
             >+ Nueva categoría</button>
           </div>
-          <select
-            multiple
-            v-model="form.categories"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green bg-white"
-            size="5"
-          >
-            <option v-for="c in categories" :key="c._id" :value="c.name">
-              {{ c.icon }} {{ c.name }}
-            </option>
-          </select>
-          <p class="text-xs text-gray-400 mt-1">Mantén presionado Ctrl (o Cmd en Mac) para seleccionar varias.</p>
-          <div v-if="form.categories.length" class="flex flex-wrap gap-1 mt-2">
+          <!-- Chips de seleccionadas -->
+          <div v-if="form.categories.length" class="flex flex-wrap gap-1 mb-2">
             <span
               v-for="cat in form.categories" :key="cat"
-              class="text-xs bg-brand-green/10 text-brand-green px-2 py-0.5 rounded-full"
-            >{{ cat }}</span>
+              class="inline-flex items-center gap-1 text-xs bg-brand-green text-white px-2 py-1 rounded-full"
+            >
+              {{ cat }}
+              <button type="button" @click="removeCat(cat)" class="hover:opacity-70 leading-none">✕</button>
+            </span>
+          </div>
+
+          <!-- Trigger del dropdown -->
+          <div class="relative">
+            <button
+              type="button"
+              @click="toggleCatDropdown"
+              class="w-full border rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-brand-green bg-white"
+              :class="catDropdownOpen ? 'ring-2 ring-brand-green border-brand-green' : 'border-gray-300'"
+            >
+              <span :class="form.categories.length ? 'text-gray-700' : 'text-gray-400'">
+                {{ form.categories.length ? `${form.categories.length} servicio(s) seleccionado(s)` : 'Selecciona tus servicios...' }}
+              </span>
+              <span class="text-gray-400 text-xs">{{ catDropdownOpen ? '▲' : '▼' }}</span>
+            </button>
+
+            <!-- Lista desplegable -->
+            <div
+              v-if="catDropdownOpen"
+              class="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+            >
+              <!-- Buscador -->
+              <div class="p-2 border-b">
+                <input
+                  v-model="catSearch"
+                  placeholder="Buscar categoría..."
+                  class="w-full text-sm px-3 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  @click.stop
+                />
+              </div>
+              <!-- Opciones con scroll -->
+              <ul class="max-h-48 overflow-y-auto">
+                <li v-if="!filteredCategories.length" class="px-4 py-3 text-sm text-gray-400 text-center">
+                  Sin resultados
+                </li>
+                <li
+                  v-for="c in filteredCategories" :key="c._id"
+                  @click="selectCat(c.name)"
+                  class="flex items-center gap-2 px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                  :class="form.categories.includes(c.name) ? 'bg-brand-green/5' : ''"
+                >
+                  <span
+                    class="w-4 h-4 rounded border flex items-center justify-center shrink-0 text-xs"
+                    :class="form.categories.includes(c.name) ? 'bg-brand-green border-brand-green text-white' : 'border-gray-300'"
+                  >{{ form.categories.includes(c.name) ? '✓' : '' }}</span>
+                  <span>{{ c.icon }} {{ c.name }}</span>
+                </li>
+              </ul>
+              <div class="p-2 border-t">
+                <button type="button" @click="catDropdownOpen = false" class="w-full text-xs text-center text-gray-500 hover:text-gray-700 py-1">
+                  Cerrar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
