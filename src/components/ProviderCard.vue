@@ -8,47 +8,84 @@ const router = useRouter()
 <template>
   <div
     @click="router.push(`/providers/${provider._id}`)"
-    class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer overflow-hidden transition-shadow"
+    class="bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition-shadow overflow-hidden"
   >
-    <img
-      v-if="provider.photos && provider.photos.length"
-      :src="provider.photos[0].url"
-      class="w-full h-36 object-cover"
-      alt="Trabajo"
-    />
-    <div class="p-5">
-    <div class="flex items-center gap-3 mb-3">
-      <img v-if="provider.profilePhoto?.url" :src="provider.profilePhoto.url"
-        class="w-12 h-12 rounded-full object-cover shrink-0" alt="" />
-      <div v-else class="w-12 h-12 bg-brand-base/20 rounded-full flex items-center justify-center text-xl font-bold text-brand-medium shrink-0">
-        {{ provider.businessName?.[0] }}
+    <div class="flex">
+
+      <!-- Cuadrícula de fotos lateral izquierda -->
+      <div
+        v-if="provider.photos && provider.photos.length"
+        class="w-24 shrink-0 grid gap-0.5 self-stretch"
+        :class="provider.photos.length === 1 ? 'grid-rows-1' : provider.photos.length === 2 ? 'grid-rows-2' : 'grid-rows-3'"
+      >
+        <img
+          v-for="(photo, i) in provider.photos.slice(0, 3)"
+          :key="i"
+          :src="photo.url"
+          class="w-full h-full object-cover"
+          alt="Trabajo"
+        />
       </div>
-      <div class="min-w-0">
-        <h3 class="font-semibold text-gray-800 truncate">{{ provider.businessName }}</h3>
-        <p class="text-sm text-gray-500">{{ provider.city }}</p>
+
+      <!-- Placeholder si no hay fotos -->
+      <div
+        v-else
+        class="w-24 shrink-0 bg-gray-100 flex items-center justify-center text-gray-300 text-3xl self-stretch"
+      >
+        📷
       </div>
-    </div>
-    <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ provider.description || 'Sin descripción' }}</p>
-    <div class="flex items-center justify-between">
-      <div class="flex gap-1 flex-wrap">
+
+      <!-- Contenido de la card -->
+      <div class="flex-1 min-w-0 p-4 flex flex-col justify-between">
+
+        <!-- Cabecera: avatar + nombre -->
+        <div class="flex items-center gap-2 mb-2">
+          <img
+            v-if="provider.profilePhoto?.url"
+            :src="provider.profilePhoto.url"
+            class="w-9 h-9 rounded-full object-cover shrink-0"
+            alt=""
+          />
+          <div
+            v-else
+            class="w-9 h-9 bg-brand-base/20 rounded-full flex items-center justify-center text-sm font-bold text-brand-medium shrink-0"
+          >
+            {{ provider.businessName?.[0] }}
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-gray-800 truncate text-sm leading-tight">{{ provider.businessName }}</h3>
+            <p class="text-xs text-gray-500">{{ provider.city }}</p>
+          </div>
+        </div>
+
+        <!-- Descripción -->
+        <p class="text-xs text-gray-600 mb-2 line-clamp-2">{{ provider.description || 'Sin descripción' }}</p>
+
+        <!-- Categorías + rating -->
+        <div class="flex items-center justify-between gap-1">
+          <div class="flex gap-1 flex-wrap min-w-0">
+            <span
+              v-for="cat in provider.categories?.slice(0, 2)"
+              :key="cat"
+              class="text-xs bg-brand-base/10 text-brand-medium px-1.5 py-0.5 rounded-full truncate max-w-[80px]"
+            >{{ cat }}</span>
+          </div>
+          <div class="flex items-center gap-0.5 text-xs shrink-0">
+            <span class="text-yellow-400">★</span>
+            <span class="font-medium">{{ provider.rating?.average || 0 }}</span>
+            <span class="text-gray-400">({{ provider.rating?.count || 0 }})</span>
+          </div>
+        </div>
+
+        <!-- Disponibilidad -->
         <span
-          v-for="cat in provider.categories?.slice(0, 2)"
-          :key="cat"
-          class="text-xs bg-brand-base/10 text-brand-medium px-2 py-1 rounded-full"
-        >{{ cat }}</span>
+          :class="provider.availability === 'available' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+          class="mt-2 text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+        >
+          {{ provider.availability === 'available' ? '● Disponible' : provider.availability }}
+        </span>
+
       </div>
-      <div class="flex items-center gap-1 text-sm shrink-0">
-        <span class="text-yellow-400">★</span>
-        <span class="font-medium">{{ provider.rating?.average || 0 }}</span>
-        <span class="text-gray-400">({{ provider.rating?.count || 0 }})</span>
-      </div>
-    </div>
-    <span
-      :class="provider.availability === 'available' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-      class="mt-3 text-xs px-2 py-1 rounded-full inline-block"
-    >
-      {{ provider.availability === 'available' ? '● Disponible' : provider.availability }}
-    </span>
     </div>
   </div>
 </template>
