@@ -3,6 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
 import ProviderCard from '../components/ProviderCard.vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import 'swiper/css'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -13,6 +15,9 @@ const page = ref(1)
 const searchCategory = ref('')
 const searchCity = ref('')
 const searchCp = ref('')
+
+// ¿Está buscando con filtros? Si no, mostramos navegación por categorías.
+const isSearch = computed(() => !!(route.query.category || route.query.city || route.query.cp))
 
 // Selector de categorías (buscable)
 const categories = ref([])
@@ -25,18 +30,42 @@ const filteredCats = computed(() => {
 })
 const selectCat = (name) => { searchCategory.value = name; catOpen.value = false; catSearch.value = ''; search() }
 
+// Navegación por categorías (carruseles)
+const groups = ref([])
+const browseLoading = ref(false)
+
+const swiperBreakpoints = {
+  0: { slidesPerView: 1.15, spaceBetween: 12 },
+  640: { slidesPerView: 2.2, spaceBetween: 16 },
+  1024: { slidesPerView: 3.2, spaceBetween: 20 },
+}
+
+const loadGrouped = async () => {
+  browseLoading.value = true
+  try {
+    const data = await fetch(`${API}/providers?limit=300`).then((r) => r.json())
+    const provs = data.providers || []
+    groups.value = categories.value
+      .map((c) => ({
+        name: c.name,
+        icon: c.icon || '🔧',
+        providers: provs.filter((p) => (p.categories || []).includes(c.name)).slice(0, 10),
+      }))
+      .filter((g) => g.providers.length)
+  } catch (e) { groups.value = [] }
+  finally { browseLoading.value = false }
+}
+
 const load = () => {
   page.value = 1
   searchCategory.value = route.query.category || ''
   searchCity.value = route.query.city || ''
   searchCp.value = route.query.cp || ''
-  store.fetchProviders({
-    category: route.query.category,
-    city: route.query.city,
-    cp: route.query.cp,
-    page: page.value,
-    limit: 12,
-  })
+  if (isSearch.value) {
+    store.fetchProviders({ category: route.query.category, city: route.query.city, cp: route.query.cp, page: page.value, limit: 12 })
+  } else {
+    loadGrouped()
+  }
 }
 
 const search = () => {
@@ -51,7 +80,7 @@ const search = () => {
 }
 
 onMounted(async () => {
-  try { const r = await fetch(`${API}/categories`); categories.value = await r.json() } catch (e) { /* noop */ }
+  try { categories.value = await fetch(`${API}/categories`).then((r) => r.json()) } catch (e) { /* noop */ }
   load()
 })
 watch(() => route.query, load)
@@ -90,44 +119,59 @@ watch(() => route.query, load)
             </ul>
           </div>
         </div>
-        <input
-          v-model="searchCity"
-          placeholder="Ciudad"
-          class="sm:w-40 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen"
-          @keyup.enter="search"
-        />
-        <input
-          v-model="searchCp"
-          placeholder="Código postal"
-          class="sm:w-36 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen"
-          @keyup.enter="search"
-        />
-        <button
-          @click="search"
-          class="bg-brand-lightGreen text-brand-dark font-bold px-6 py-3 rounded-lg hover:bg-white hover:text-brand-green transition-all duration-200 shadow-md"
-        >
+        <input v-model="searchCity" placeholder="Ciudad"
+          class="sm:w-40 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" @keyup.enter="search" />
+        <input v-model="searchCp" placeholder="Código postal"
+          class="sm:w-36 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" @keyup.enter="search" />
+        <button @click="search"
+          class="bg-brand-lightGreen text-brand-dark font-bold px-6 py-3 rounded-lg hover:bg-white hover:text-brand-green transition-all duration-200 shadow-md">
           Buscar
         </button>
       </div>
     </section>
 
-    <!-- Resultados -->
     <div class="max-w-6xl mx-auto py-10 px-4">
-      <h1 class="text-2xl font-bold mb-2 text-gray-800">
-        Proveedores
-        <span v-if="route.query.category" class="text-blue-600"> · {{ route.query.category }}</span>
-        <span v-if="route.query.city" class="text-gray-500 text-lg font-normal"> en {{ route.query.city }}</span>
-        <span v-if="route.query.cp" class="text-gray-500 text-lg font-normal"> · CP {{ route.query.cp }}</span>
-      </h1>
-      <p class="text-sm text-gray-400 mb-6">{{ store.total }} resultados</p>
+      <!-- ── Resultados de búsqueda (lista) ── -->
+      <template v-if="isSearch">
+        <h1 class="text-2xl font-bold mb-2 text-gray-800">
+          Proveedores
+          <span v-if="route.query.category" class="text-brand-green"> · {{ route.query.category }}</span>
+          <span v-if="route.query.city" class="text-gray-500 text-lg font-normal"> en {{ route.query.city }}</span>
+          <span v-if="route.query.cp" class="text-gray-500 text-lg font-normal"> · CP {{ route.query.cp }}</span>
+        </h1>
+        <p class="text-sm text-gray-400 mb-6">{{ store.total }} resultados</p>
 
-      <div v-if="store.loading" class="text-center py-16 text-gray-400">Cargando...</div>
-      <div v-else-if="store.providers.length === 0" class="text-center py-16 text-gray-400">
-        No se encontraron proveedores con esos filtros.
-      </div>
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <ProviderCard v-for="p in store.providers" :key="p._id" :provider="p" />
-      </div>
+        <div v-if="store.loading" class="text-center py-16 text-gray-400">Cargando...</div>
+        <div v-else-if="store.providers.length === 0" class="text-center py-16 text-gray-400">
+          No se encontraron proveedores con esos filtros.
+        </div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ProviderCard v-for="p in store.providers" :key="p._id" :provider="p" />
+        </div>
+      </template>
+
+      <!-- ── Navegación por categorías (carruseles) ── -->
+      <template v-else>
+        <div v-if="browseLoading" class="text-center py-16 text-gray-400">Cargando...</div>
+        <div v-else-if="!groups.length" class="text-center py-16 text-gray-400">Aún no hay profesionales registrados.</div>
+        <div v-else class="space-y-12">
+          <section v-for="g in groups" :key="g.name">
+            <!-- Divider con nombre de categoría -->
+            <div class="flex items-center gap-3 mb-4">
+              <h2 class="text-xl font-bold text-brand-dark whitespace-nowrap">{{ g.icon }} {{ g.name }}</h2>
+              <div class="flex-1 h-px bg-gray-200"></div>
+              <router-link :to="`/providers?category=${encodeURIComponent(g.name)}`"
+                class="text-sm text-brand-green hover:text-brand-lightGreen hover:underline font-medium shrink-0">Ver todos →</router-link>
+            </div>
+            <!-- Carrusel (máx 10) -->
+            <Swiper :breakpoints="swiperBreakpoints" :slides-per-view="1.15" :space-between="12" class="pb-2">
+              <SwiperSlide v-for="p in g.providers" :key="p._id" class="h-auto">
+                <ProviderCard :provider="p" />
+              </SwiperSlide>
+            </Swiper>
+          </section>
+        </div>
+      </template>
     </div>
   </main>
 </template>

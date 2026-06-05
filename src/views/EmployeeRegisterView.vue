@@ -277,9 +277,12 @@ const onProfile = (e) => {
 }
 
 const onFiles = (e) => {
-  const files = Array.from(e.target.files).slice(0, 5)
-  photos.value = files
-  photoPreviews.value = files.map(f => URL.createObjectURL(f))
+  const incoming = Array.from(e.target.files)
+  const room = Math.max(0, 5 - photos.value.length)
+  const toAdd = incoming.slice(0, room)
+  photos.value = [...photos.value, ...toAdd]
+  photoPreviews.value = [...photoPreviews.value, ...toAdd.map(f => URL.createObjectURL(f))]
+  e.target.value = '' // permite volver a seleccionar (incluso el mismo archivo)
 }
 
 const removeWorkPhoto = (i) => {
