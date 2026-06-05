@@ -13,6 +13,7 @@ const categories = ref([])
 const error = ref('')
 const loading = ref(false)
 const geoStatus = ref('')
+const geoLoading = ref(false)
 const createdId = ref(null)
 const photos = ref([])
 const profilePhoto = ref(null)
@@ -44,14 +45,12 @@ const removeCat = (name) => {
 const showCatModal = ref(false)
 const newCat = ref({ name: '', icon: '' })
 const catLoading = ref(false)
-const catSuccess = ref('')
 const catError = ref('')
 
 const suggestCategory = async () => {
   if (!newCat.value.name.trim()) return
   catLoading.value = true
   catError.value = ''
-  catSuccess.value = ''
   try {
     const res = await fetch(`${API}/categories/suggest`, {
       method: 'POST',
@@ -60,7 +59,13 @@ const suggestCategory = async () => {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || 'Error al enviar')
-    catSuccess.value = data.message
+
+    // Agregar al registro del proveedor aunque esté pendiente
+    if (!form.value.categories.includes(newCat.value.name.trim())) {
+      form.value.categories.push(newCat.value.name.trim())
+    }
+
+    showCatModal.value = false
     newCat.value = { name: '', icon: '' }
   } catch (e) {
     catError.value = e.message
@@ -71,7 +76,7 @@ const suggestCategory = async () => {
 
 const form = ref({
   name: '', email: '', phone: '', password: '',
-  businessName: '', city: '', postalCode: '', description: '',
+  businessName: '', city: '', postalCode: '', address: '', description: '',
   categories: [], lat: null, lng: null,
 })
 
@@ -82,22 +87,21 @@ onMounted(async () => {
   } catch { /* ignore */ }
 })
 
-const toggleCat = (name) => {
-  const i = form.value.categories.indexOf(name)
-  if (i === -1) form.value.categories.push(name)
-  else form.value.categories.splice(i, 1)
-}
-
 const captureLocation = () => {
-  geoStatus.value = 'Obteniendo ubicación...'
   if (!navigator.geolocation) { geoStatus.value = 'Tu dispositivo no soporta geolocalización.'; return }
+  geoLoading.value = true
+  geoStatus.value = ''
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       form.value.lat = pos.coords.latitude
       form.value.lng = pos.coords.longitude
-      geoStatus.value = '✅ Ubicación capturada'
+      geoStatus.value = 'captured'
+      geoLoading.value = false
     },
-    () => { geoStatus.value = '⚠️ No se pudo obtener tu ubicación (puedes continuar sin ella).' }
+    () => {
+      geoStatus.value = 'error'
+      geoLoading.value = false
+    }
   )
 }
 
@@ -113,7 +117,6 @@ const submit = async () => {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || 'Error al registrar')
-    // persistir sesión para poder subir fotos
     auth.accessToken = data.accessToken
     auth.user = data.user
     localStorage.setItem('accessToken', data.accessToken)
@@ -168,17 +171,18 @@ const uploadPhotos = async () => {
 
       <!-- Paso 1: datos -->
       <div v-if="step === 1" class="space-y-3">
-        <input v-model="form.name" placeholder="Tu nombre" class="w-full border rounded-lg px-3 py-2" />
-        <input v-model="form.businessName" placeholder="Nombre del negocio / como te anuncias" class="w-full border rounded-lg px-3 py-2" />
-        <input v-model="form.phone" placeholder="Teléfono / WhatsApp" class="w-full border rounded-lg px-3 py-2" />
-        <input v-model="form.email" type="email" placeholder="Correo (opcional)" class="w-full border rounded-lg px-3 py-2" />
-        <input v-model="form.password" type="password" placeholder="Contraseña (mín. 6)" class="w-full border rounded-lg px-3 py-2" />
+        <input v-model="form.name" placeholder="Tu nombre" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+        <input v-model="form.businessName" placeholder="Nombre del negocio / como te anuncias" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+        <input v-model="form.phone" placeholder="Teléfono / WhatsApp" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+        <input v-model="form.email" type="email" placeholder="Correo (opcional)" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+        <input v-model="form.password" type="password" placeholder="Contraseña (mín. 6)" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
         <div class="grid grid-cols-2 gap-3">
-          <input v-model="form.city" placeholder="Ciudad" class="border rounded-lg px-3 py-2" />
-          <input v-model="form.postalCode" placeholder="Código postal" class="border rounded-lg px-3 py-2" />
+          <input v-model="form.city" placeholder="Ciudad" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+          <input v-model="form.postalCode" placeholder="Código postal" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
         </div>
-        <textarea v-model="form.description" rows="3" placeholder="Describe tus servicios y experiencia" class="w-full border rounded-lg px-3 py-2"></textarea>
+        <textarea v-model="form.description" rows="3" placeholder="Describe tus servicios y experiencia" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"></textarea>
 
+        <!-- Categorías -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <p class="text-sm font-medium text-gray-700">¿Qué servicios ofreces?</p>
@@ -188,6 +192,7 @@ const uploadPhotos = async () => {
               class="text-xs text-brand-green border border-brand-green px-2 py-1 rounded-full hover:bg-brand-green hover:text-white transition-colors"
             >+ Nueva categoría</button>
           </div>
+
           <!-- Chips de seleccionadas -->
           <div v-if="form.categories.length" class="flex flex-wrap gap-1 mb-2">
             <span
@@ -204,7 +209,7 @@ const uploadPhotos = async () => {
             <button
               type="button"
               @click="toggleCatDropdown"
-              class="w-full border rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-brand-green bg-white"
+              class="w-full border rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-brand-green bg-white transition-colors"
               :class="catDropdownOpen ? 'ring-2 ring-brand-green border-brand-green' : 'border-gray-300'"
             >
               <span :class="form.categories.length ? 'text-gray-700' : 'text-gray-400'">
@@ -218,7 +223,6 @@ const uploadPhotos = async () => {
               v-if="catDropdownOpen"
               class="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
             >
-              <!-- Buscador -->
               <div class="p-2 border-b">
                 <input
                   v-model="catSearch"
@@ -227,11 +231,8 @@ const uploadPhotos = async () => {
                   @click.stop
                 />
               </div>
-              <!-- Opciones con scroll -->
               <ul class="max-h-48 overflow-y-auto">
-                <li v-if="!filteredCategories.length" class="px-4 py-3 text-sm text-gray-400 text-center">
-                  Sin resultados
-                </li>
+                <li v-if="!filteredCategories.length" class="px-4 py-3 text-sm text-gray-400 text-center">Sin resultados</li>
                 <li
                   v-for="c in filteredCategories" :key="c._id"
                   @click="selectCat(c.name)"
@@ -246,65 +247,50 @@ const uploadPhotos = async () => {
                 </li>
               </ul>
               <div class="p-2 border-t">
-                <button type="button" @click="catDropdownOpen = false" class="w-full text-xs text-center text-gray-500 hover:text-gray-700 py-1">
-                  Cerrar
-                </button>
+                <button type="button" @click="catDropdownOpen = false" class="w-full text-xs text-center text-gray-500 hover:text-gray-700 py-1">Cerrar</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Modal: sugerir nueva categoría -->
-        <Teleport to="body">
-          <div v-if="showCatModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-              <h2 class="text-lg font-bold text-gray-800 mb-1">Sugerir nueva categoría</h2>
-              <p class="text-xs text-gray-500 mb-4">El administrador revisará tu solicitud. Mientras tanto puedes continuar tu registro.</p>
+        <!-- Ubicación -->
+        <div class="space-y-2">
+          <p class="text-sm font-medium text-gray-700">Ubicación</p>
 
-              <div v-if="catSuccess" class="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded mb-3">
-                {{ catSuccess }}
-              </div>
-              <div v-if="catError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-3">
-                {{ catError }}
-              </div>
+          <!-- Input de dirección manual -->
+          <input
+            v-model="form.address"
+            placeholder="Escribe tu dirección (calle, colonia, ciudad)"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+          />
 
-              <div v-if="!catSuccess" class="space-y-3">
-                <input
-                  v-model="newCat.name"
-                  placeholder="Nombre de la categoría (ej. Tapicero)"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-                  @keyup.enter="suggestCategory"
-                />
-                <input
-                  v-model="newCat.icon"
-                  placeholder="Emoji opcional (ej. 🛋️)"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-                />
-                <div class="flex gap-2 pt-1">
-                  <button
-                    @click="suggestCategory"
-                    :disabled="catLoading || !newCat.name.trim()"
-                    class="flex-1 bg-brand-green text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50"
-                  >{{ catLoading ? 'Enviando...' : 'Enviar solicitud' }}</button>
-                  <button @click="showCatModal = false; catSuccess = ''; catError = ''" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
-                </div>
-              </div>
-
-              <div v-else class="text-center pt-2">
-                <button @click="showCatModal = false; catSuccess = ''; catError = ''" class="bg-brand-green text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-lightGreen">
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
-        </Teleport>
-
-        <div>
-          <button type="button" @click="captureLocation" class="text-sm bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200">📍 Usar mi ubicación</button>
-          <span class="text-xs text-gray-500 ml-2">{{ geoStatus }}</span>
+          <!-- Botón usar ubicación actual -->
+          <button
+            type="button"
+            @click="captureLocation"
+            :disabled="geoLoading"
+            class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all duration-200"
+            :class="geoStatus === 'captured'
+              ? 'border-brand-green bg-brand-green/5 text-brand-green'
+              : geoStatus === 'error'
+                ? 'border-red-300 bg-red-50 text-red-500'
+                : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5'"
+          >
+            <span v-if="geoLoading" class="animate-spin text-base">⏳</span>
+            <span v-else-if="geoStatus === 'captured'" class="text-base">✅</span>
+            <span v-else-if="geoStatus === 'error'" class="text-base">⚠️</span>
+            <span v-else class="text-base">📍</span>
+            <span>
+              {{ geoLoading ? 'Obteniendo ubicación...'
+                : geoStatus === 'captured' ? 'Ubicación capturada correctamente'
+                : geoStatus === 'error' ? 'No se pudo obtener la ubicación'
+                : 'Usar mi ubicación actual' }}
+            </span>
+          </button>
+          <p v-if="geoStatus === 'error'" class="text-xs text-gray-400">Puedes continuar sin ubicación o escribir tu dirección arriba.</p>
         </div>
 
-        <button @click="submit" :disabled="loading" class="w-full bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-medium">
+        <button @click="submit" :disabled="loading" class="w-full bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-medium text-sm transition-colors">
           {{ loading ? 'Registrando...' : 'Continuar' }}
         </button>
       </div>
@@ -338,4 +324,45 @@ const uploadPhotos = async () => {
       </div>
     </div>
   </div>
+
+  <!-- Modal: sugerir nueva categoría -->
+  <Teleport to="body">
+    <div v-if="showCatModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Sugerir nueva categoría</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Se enviará al administrador para aprobación. Se agregará a tu perfil de inmediato y quedará visible cuando sea aprobada.
+        </p>
+
+        <div v-if="catError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-3">
+          {{ catError }}
+        </div>
+
+        <div class="space-y-3">
+          <input
+            v-model="newCat.name"
+            placeholder="Nombre de la categoría (ej. Tapicero)"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+            @keyup.enter="suggestCategory"
+          />
+          <input
+            v-model="newCat.icon"
+            placeholder="Emoji opcional (ej. 🛋️)"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+          />
+          <div class="flex gap-2 pt-1">
+            <button
+              @click="suggestCategory"
+              :disabled="catLoading || !newCat.name.trim()"
+              class="flex-1 bg-brand-green text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors"
+            >{{ catLoading ? 'Enviando...' : 'Enviar y agregar' }}</button>
+            <button
+              @click="showCatModal = false; catError = ''; newCat = { name: '', icon: '' }"
+              class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            >Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
