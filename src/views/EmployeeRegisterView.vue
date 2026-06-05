@@ -19,6 +19,35 @@ const profilePhoto = ref(null)
 const uploading = ref(false)
 const done = ref(false)
 
+// Modal de nueva categoría
+const showCatModal = ref(false)
+const newCat = ref({ name: '', icon: '' })
+const catLoading = ref(false)
+const catSuccess = ref('')
+const catError = ref('')
+
+const suggestCategory = async () => {
+  if (!newCat.value.name.trim()) return
+  catLoading.value = true
+  catError.value = ''
+  catSuccess.value = ''
+  try {
+    const res = await auth.authFetch(`${API}/categories/suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCat.value.name.trim(), icon: newCat.value.icon.trim() }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'Error al enviar')
+    catSuccess.value = data.message
+    newCat.value = { name: '', icon: '' }
+  } catch (e) {
+    catError.value = e.message
+  } finally {
+    catLoading.value = false
+  }
+}
+
 const form = ref({
   name: '', email: '', phone: '', password: '',
   businessName: '', city: '', postalCode: '', description: '',
@@ -130,7 +159,14 @@ const uploadPhotos = async () => {
         <textarea v-model="form.description" rows="3" placeholder="Describe tus servicios y experiencia" class="w-full border rounded-lg px-3 py-2"></textarea>
 
         <div>
-          <p class="text-sm font-medium text-gray-700 mb-2">¿Qué servicios ofreces?</p>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-medium text-gray-700">¿Qué servicios ofreces?</p>
+            <button
+              type="button"
+              @click="showCatModal = true"
+              class="text-xs text-brand-green border border-brand-green px-2 py-1 rounded-full hover:bg-brand-green hover:text-white transition-colors"
+            >+ Nueva categoría</button>
+          </div>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="c in categories" :key="c._id" type="button" @click="toggleCat(c.name)"
@@ -139,6 +175,51 @@ const uploadPhotos = async () => {
             >{{ c.icon }} {{ c.name }}</button>
           </div>
         </div>
+
+        <!-- Modal: sugerir nueva categoría -->
+        <Teleport to="body">
+          <div v-if="showCatModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 class="text-lg font-bold text-gray-800 mb-1">Sugerir nueva categoría</h2>
+              <p class="text-xs text-gray-500 mb-4">El administrador revisará tu solicitud. Mientras tanto puedes continuar tu registro.</p>
+
+              <div v-if="catSuccess" class="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded mb-3">
+                {{ catSuccess }}
+              </div>
+              <div v-if="catError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-3">
+                {{ catError }}
+              </div>
+
+              <div v-if="!catSuccess" class="space-y-3">
+                <input
+                  v-model="newCat.name"
+                  placeholder="Nombre de la categoría (ej. Tapicero)"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  @keyup.enter="suggestCategory"
+                />
+                <input
+                  v-model="newCat.icon"
+                  placeholder="Emoji opcional (ej. 🛋️)"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+                <div class="flex gap-2 pt-1">
+                  <button
+                    @click="suggestCategory"
+                    :disabled="catLoading || !newCat.name.trim()"
+                    class="flex-1 bg-brand-green text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50"
+                  >{{ catLoading ? 'Enviando...' : 'Enviar solicitud' }}</button>
+                  <button @click="showCatModal = false; catSuccess = ''; catError = ''" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                </div>
+              </div>
+
+              <div v-else class="text-center pt-2">
+                <button @click="showCatModal = false; catSuccess = ''; catError = ''" class="bg-brand-green text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-lightGreen">
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </Teleport>
 
         <div>
           <button type="button" @click="captureLocation" class="text-sm bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200">📍 Usar mi ubicación</button>
