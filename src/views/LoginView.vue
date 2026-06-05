@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import miLogo from '../assets/logoWhatServices.png'
@@ -11,6 +11,7 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 const submit = async () => {
   loading.value = true
@@ -43,6 +44,25 @@ const rShowPass = ref(false)
 const rLoading = ref(false)
 const rError = ref('')
 
+// Temporizador del código (5 min)
+const expiresAt = ref(0)
+const nowTs = ref(Date.now())
+let ticker = null
+const startTimer = () => {
+  expiresAt.value = Date.now() + 5 * 60 * 1000
+  nowTs.value = Date.now()
+  clearInterval(ticker)
+  ticker = setInterval(() => { nowTs.value = Date.now() }, 1000)
+}
+const stopTimer = () => { clearInterval(ticker); ticker = null }
+const remainingMs = computed(() => Math.max(0, expiresAt.value - nowTs.value))
+const expired = computed(() => expiresAt.value > 0 && remainingMs.value <= 0)
+const mmss = computed(() => {
+  const s = Math.ceil(remainingMs.value / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+})
+onUnmounted(stopTimer)
+
 const passError = computed(() => (rPass.value && rPass.value.length < 6) ? 'Mínimo 6 caracteres' : '')
 const pass2Error = computed(() => (rPass2.value && rPass2.value !== rPass.value) ? 'Las contraseñas no coinciden' : '')
 
@@ -51,7 +71,7 @@ const openReset = () => {
   rDial.value = '+52'; rPhone.value = ''; rCode.value = ''; rPass.value = ''; rPass2.value = ''
   rError.value = ''
 }
-const closeReset = () => { showReset.value = false }
+const closeReset = () => { showReset.value = false; stopTimer() }
 
 const onPhoneInput = () => { rPhone.value = rPhone.value.replace(/\D/g, '').slice(0, 10) }
 
@@ -65,11 +85,13 @@ const sendCode = async () => {
     })
     if (!res.ok) throw new Error((await res.json()).message || 'Error')
     resetStep.value = 'code'
+    startTimer()
   } catch (e) { rError.value = e.message || 'No se pudo enviar el código' }
   finally { rLoading.value = false }
 }
 
 const doReset = async () => {
+  if (expired.value) { rError.value = 'El código expiró. Reenvíalo.'; return }
   if (rCode.value.trim().length < 4) { rError.value = 'Ingresa el código recibido'; return }
   if (rPass.value.length < 6) { rError.value = 'La contraseña debe tener al menos 6 caracteres'; return }
   if (rPass.value !== rPass2.value) { rError.value = 'Las contraseñas no coinciden'; return }
@@ -99,8 +121,12 @@ const doReset = async () => {
 
       <input v-model="email" type="email" placeholder="Correo electrónico"
         class="w-full border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
-      <input v-model="password" type="password" placeholder="Contraseña" @keyup.enter="submit"
-        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+      <div class="relative mb-2">
+        <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Contraseña" @keyup.enter="submit"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+        <button type="button" @click="showPassword = !showPassword" tabindex="-1"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">{{ showPassword ? '🙈' : '👁️' }}</button>
+      </div>
 
       <div class="text-right mb-4">
         <button type="button" @click="openReset" class="text-xs text-brand-green hover:text-brand-lightGreen hover:underline font-medium">
@@ -152,6 +178,11 @@ const doReset = async () => {
           <p class="text-xs text-gray-500">Revisa tu WhatsApp e ingresa el código de 6 dígitos.</p>
           <input v-model="rCode" inputmode="numeric" maxlength="6" placeholder="Código"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-brand-green" />
+          <div class="flex items-center justify-between text-xs">
+            <span v-if="!expired" class="text-gray-500">Válido por <span class="font-mono font-semibold text-brand-medium">{{ mmss }}</span></span>
+            <span v-else class="text-red-500">El código expiró.</span>
+            <button type="button" @click="sendCode" :disabled="rLoading" class="text-brand-green hover:underline font-medium">Reenviar código</button>
+          </div>
           <div>
             <div class="relative">
               <input v-model="rPass" :type="rShowPass ? 'text' : 'password'" placeholder="Nueva contraseña"
