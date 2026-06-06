@@ -2,6 +2,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation, Pagination } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
+
+const galleryModules = [Navigation, Pagination]
+const galleryBreakpoints = {
+  0: { slidesPerView: 1.2, spaceBetween: 12 },
+  640: { slidesPerView: 2.2, spaceBetween: 14 },
+  1024: { slidesPerView: 3, spaceBetween: 16 },
+}
 
 const route  = useRoute()
 const store  = useProvidersStore()
@@ -185,16 +197,24 @@ const waLink = computed(() => {
       </div>
     </div>
 
-    <!-- ── Galería de fotos ── -->
+    <!-- ── Galería de fotos (carrusel) ── -->
     <div v-if="provider.photos?.length" class="bg-white rounded-2xl shadow-sm p-4">
       <h2 class="text-sm font-semibold text-gray-700 mb-3">Trabajos realizados</h2>
-      <div class="grid grid-cols-3 gap-2">
-        <div v-for="(p, i) in provider.photos" :key="p.publicId || i"
-          @click="lightbox = p.url"
-          class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
-          <img :src="p.url" class="w-full h-full object-cover" />
-        </div>
-      </div>
+      <Swiper
+        :modules="galleryModules"
+        :breakpoints="galleryBreakpoints"
+        :slides-per-view="1.2"
+        :space-between="12"
+        navigation
+        :pagination="{ clickable: true }"
+        class="ws-gallery rounded-xl">
+        <SwiperSlide v-for="(p, i) in provider.photos" :key="p.publicId || i" class="h-auto">
+          <div @click="lightbox = p.url"
+            class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
+            <img :src="p.url" class="w-full h-full object-cover" />
+          </div>
+        </SwiperSlide>
+      </Swiper>
     </div>
 
     <!-- ── Reseñas ── -->
@@ -296,3 +316,18 @@ const waLink = computed(() => {
     <span class="animate-spin mr-2">⏳</span> Cargando...
   </div>
 </template>
+
+<style scoped>
+/* Carrusel de trabajos: espacio para los bullets y flechas/paginación con color de marca */
+.ws-gallery {
+  padding-bottom: 28px;
+}
+.ws-gallery :deep(.swiper-button-next),
+.ws-gallery :deep(.swiper-button-prev) {
+  color: #16a34a; /* brand-green */
+  --swiper-navigation-size: 24px;
+}
+.ws-gallery :deep(.swiper-pagination-bullet-active) {
+  background: #16a34a;
+}
+</style>
