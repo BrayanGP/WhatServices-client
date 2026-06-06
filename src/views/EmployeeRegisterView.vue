@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import miLogo from '../assets/logoWhatServices.png'
@@ -8,7 +8,7 @@ const API = import.meta.env.VITE_API_URL || '/api'
 const router = useRouter()
 const auth = useAuthStore()
 
-const step = ref(1)
+const step = ref('otp') // 'otp' → 1 → 2 → 3
 const categories = ref([])
 const error = ref('')
 const loading = ref(false)
@@ -55,6 +55,80 @@ const dialCodes = [
   { code: '+61',  flag: '🇦🇺', name: 'Australia' },
 ]
 const dialCode = ref('+52')
+
+// ── Verificación por OTP (paso 0) ─────────────────────────────────────────────
+const otpName = ref('')
+const otpDial = ref('+52')
+const otpPhone = ref('')
+const otpCode = ref('')
+const otpSent = ref(false)
+const otpLoading = ref(false)
+const otpError = ref('')
+const otpAttemptsLeft = ref(null)
+const blockedUntil = ref(0)
+const nowTs = ref(Date.now())
+let blockTimer = null
+const BLOCK_KEY = 'ws_reg_block'
+
+const blockRemaining = computed(() => Math.max(0, blockedUntil.value - nowTs.value))
+const isBlocked = computed(() => blockRemaining.value > 0)
+const blockMmss = computed(() => {
+  const s = Math.ceil(blockRemaining.value / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+})
+const tickBlock = () => {
+  clearInterval(blockTimer)
+  blockTimer = setInterval(() => { nowTs.value = Date.now(); if (!isBlocked.value) clearInterval(blockTimer) }, 1000)
+}
+const startBlock = (ms, phoneKey) => {
+  blockedUntil.value = Date.now() + (ms || 10 * 60 * 1000)
+  localStorage.setItem(BLOCK_KEY, JSON.stringify({ phone: phoneKey, until: blockedUntil.value }))
+  tickBlock()
+}
+const onOtpName = () => { otpName.value = otpName.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '') }
+const onOtpPhone = () => { otpPhone.value = otpPhone.value.replace(/\D/g, '').slice(0, 10) }
+
+const sendOtp = async () => {
+  otpError.value = ''
+  if (!otpName.value.trim()) { otpError.value = 'Escribe tu nombre'; return }
+  if (otpPhone.value.length < 10) { otpError.value = 'Teléfono de 10 dígitos'; return }
+  if (isBlocked.value) return
+  otpLoading.value = true
+  try {
+    const res = await fetch(`${API}/auth/register/send-otp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: `${otpDial.value}${otpPhone.value}` }),
+    })
+    const data = await res.json()
+    if (res.status === 429) { startBlock(data.remainingMs, otpPhone.value); throw new Error(data.message || 'Bloqueado') }
+    if (!res.ok) throw new Error(data.message || 'Error al enviar el código')
+    otpSent.value = true; otpAttemptsLeft.value = null; otpCode.value = ''
+  } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
+}
+
+const verifyOtp = async () => {
+  otpError.value = ''
+  if (isBlocked.value) return
+  if (otpCode.value.trim().length < 4) { otpError.value = 'Ingresa el código'; return }
+  otpLoading.value = true
+  try {
+    const res = await fetch(`${API}/auth/register/verify-otp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: `${otpDial.value}${otpPhone.value}`, code: otpCode.value.trim() }),
+    })
+    const data = await res.json()
+    if (res.status === 429) { startBlock(data.remainingMs, otpPhone.value); throw new Error(data.message || 'Bloqueado 10 minutos') }
+    if (!res.ok) { otpAttemptsLeft.value = data.attemptsLeft ?? null; throw new Error(data.message || 'Código incorrecto') }
+    // Verificado → pasar al resto del formulario con datos precargados
+    form.value.name = otpName.value
+    form.value.phone = otpPhone.value
+    dialCode.value = otpDial.value
+    localStorage.removeItem(BLOCK_KEY)
+    step.value = 1
+  } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
+}
+
+onUnmounted(() => clearInterval(blockTimer))
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 const touched = ref({})
@@ -156,6 +230,15 @@ onMounted(async () => {
   try {
     const res = await fetch(`${API}/categories`)
     categories.value = await res.json()
+  } catch { /* ignore */ }
+  // Restaurar bloqueo de OTP si la página se recargó dentro de los 10 min
+  try {
+    const raw = localStorage.getItem(BLOCK_KEY)
+    if (raw) {
+      const { phone, until } = JSON.parse(raw)
+      if (until > Date.now()) { otpPhone.value = phone || ''; blockedUntil.value = until; tickBlock() }
+      else localStorage.removeItem(BLOCK_KEY)
+    }
   } catch { /* ignore */ }
 })
 
@@ -326,8 +409,51 @@ const uploadPhotos = async () => {
 
       <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-4">{{ error }}</div>
 
+      <!-- ── Paso 0: verificación por OTP ── -->
+      <div v-if="step === 'otp'" class="space-y-3">
+        <p class="text-sm text-gray-600 -mt-2">Primero verifica tu teléfono. Te enviaremos un código por WhatsApp. 📲</p>
+
+        <input v-model="otpName" @input="onOtpName" placeholder="Tu nombre *" :disabled="otpSent || isBlocked"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
+
+        <div class="flex gap-2">
+          <select v-model="otpDial" :disabled="otpSent || isBlocked"
+            class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-36 focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100">
+            <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
+          </select>
+          <input v-model="otpPhone" @input="onOtpPhone" inputmode="numeric" maxlength="10" placeholder="Teléfono *" :disabled="otpSent || isBlocked"
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
+        </div>
+
+        <div v-if="otpError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded">{{ otpError }}</div>
+
+        <div v-if="isBlocked" class="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-3 py-2 rounded">
+          🚫 Demasiados intentos. Vuelve a intentar en <b>{{ blockMmss }}</b>.
+        </div>
+
+        <template v-else>
+          <button v-if="!otpSent" @click="sendOtp" :disabled="otpLoading"
+            class="w-full bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50">
+            {{ otpLoading ? 'Enviando...' : 'Enviar código' }}
+          </button>
+
+          <template v-else>
+            <input v-model="otpCode" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos" @keyup.enter="verifyOtp"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            <p v-if="otpAttemptsLeft != null" class="text-xs text-amber-600">Intentos restantes: {{ otpAttemptsLeft }}</p>
+            <div class="flex gap-2">
+              <button @click="verifyOtp" :disabled="otpLoading"
+                class="flex-1 bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50">
+                {{ otpLoading ? 'Verificando...' : 'Verificar y continuar' }}
+              </button>
+              <button @click="sendOtp" :disabled="otpLoading" class="px-3 py-2.5 text-sm text-gray-500 hover:text-brand-green">Reenviar</button>
+            </div>
+          </template>
+        </template>
+      </div>
+
       <!-- ── Paso 1 ── -->
-      <div v-if="step === 1" class="space-y-3">
+      <div v-else-if="step === 1" class="space-y-3">
 
         <!-- Nombre -->
         <div>
@@ -354,29 +480,11 @@ const uploadPhotos = async () => {
           <p v-if="fieldError('businessName')" class="text-xs text-red-500 mt-1">{{ fieldError('businessName') }}</p>
         </div>
 
-        <!-- Teléfono con lada -->
-        <div>
-          <div class="flex gap-2">
-            <select
-              v-model="dialCode"
-              class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green bg-white shrink-0 w-36"
-            >
-              <option v-for="d in dialCodes" :key="d.code" :value="d.code">
-                {{ d.flag }} {{ d.code }}
-              </option>
-            </select>
-            <input
-              v-model="form.phone"
-              placeholder="Teléfono *"
-              inputmode="numeric"
-              maxlength="10"
-              class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-              :class="fieldError('phone') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-              @input="onPhoneInput"
-              @blur="touch('phone')"
-            />
-          </div>
-          <p v-if="fieldError('phone')" class="text-xs text-red-500 mt-1">{{ fieldError('phone') }}</p>
+        <!-- Teléfono verificado (no editable) -->
+        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
+          <span class="text-green-600">✓</span>
+          <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
+          <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
         </div>
 
         <!-- Email -->
