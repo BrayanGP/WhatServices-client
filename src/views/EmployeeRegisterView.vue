@@ -85,6 +85,22 @@ const startBlock = (ms, phoneKey) => {
   localStorage.setItem(BLOCK_KEY, JSON.stringify({ phone: phoneKey, until: blockedUntil.value }))
   tickBlock()
 }
+// Temporizador de vigencia del código (5 min) — el reenvío se habilita al expirar
+const otpExpiresAt = ref(0)
+let codeTimer = null
+const codeRemaining = computed(() => Math.max(0, otpExpiresAt.value - nowTs.value))
+const codeMmss = computed(() => {
+  const s = Math.ceil(codeRemaining.value / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+})
+const codeExpired = computed(() => otpSent.value && otpExpiresAt.value > 0 && codeRemaining.value <= 0)
+const startCodeTimer = (ms) => {
+  otpExpiresAt.value = Date.now() + (ms || 5 * 60 * 1000)
+  nowTs.value = Date.now()
+  clearInterval(codeTimer)
+  codeTimer = setInterval(() => { nowTs.value = Date.now(); if (codeRemaining.value <= 0) clearInterval(codeTimer) }, 1000)
+}
+
 const onOtpName = () => { otpName.value = otpName.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '') }
 const onOtpPhone = () => { otpPhone.value = otpPhone.value.replace(/\D/g, '').slice(0, 10) }
 
@@ -103,6 +119,7 @@ const sendOtp = async () => {
     if (res.status === 429) { startBlock(data.remainingMs, otpPhone.value); throw new Error(data.message || 'Bloqueado') }
     if (!res.ok) throw new Error(data.message || 'Error al enviar el código')
     otpSent.value = true; otpAttemptsLeft.value = null; otpCode.value = ''
+    startCodeTimer(data.expiresInMs)
   } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
 }
 
@@ -124,11 +141,12 @@ const verifyOtp = async () => {
     form.value.phone = otpPhone.value
     dialCode.value = otpDial.value
     localStorage.removeItem(BLOCK_KEY)
+    clearInterval(codeTimer)
     step.value = 1
   } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
 }
 
-onUnmounted(() => clearInterval(blockTimer))
+onUnmounted(() => { clearInterval(blockTimer); clearInterval(codeTimer) })
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 const touched = ref({})
@@ -440,13 +458,19 @@ const uploadPhotos = async () => {
           <template v-else>
             <input v-model="otpCode" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos" @keyup.enter="verifyOtp"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-green" />
-            <p v-if="otpAttemptsLeft != null" class="text-xs text-amber-600">Intentos restantes: {{ otpAttemptsLeft }}</p>
+            <div class="flex items-center justify-between text-xs">
+              <span v-if="!codeExpired" class="text-gray-500">Código válido por <span class="font-mono font-semibold text-brand-medium">{{ codeMmss }}</span></span>
+              <span v-else class="text-red-500">El código expiró. Reenvíalo.</span>
+              <span v-if="otpAttemptsLeft != null" class="text-amber-600">Intentos restantes: {{ otpAttemptsLeft }}</span>
+            </div>
             <div class="flex gap-2">
-              <button @click="verifyOtp" :disabled="otpLoading"
-                class="flex-1 bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50">
+              <button @click="verifyOtp" :disabled="otpLoading || codeExpired"
+                class="flex-1 bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ otpLoading ? 'Verificando...' : 'Verificar y continuar' }}
               </button>
-              <button @click="sendOtp" :disabled="otpLoading" class="px-3 py-2.5 text-sm text-gray-500 hover:text-brand-green">Reenviar</button>
+              <button @click="sendOtp" :disabled="otpLoading || !codeExpired"
+                class="px-3 py-2.5 text-sm rounded-lg"
+                :class="(!codeExpired || otpLoading) ? 'text-gray-300 cursor-not-allowed' : 'text-brand-green hover:underline font-medium'">Reenviar</button>
             </div>
           </template>
         </template>
