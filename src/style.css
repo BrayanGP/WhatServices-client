@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── reCAPTCHA responsive ──────────────────────────────────────────────────────
+   El widget de Google mide 304px de ancho y se desborda en pantallas chicas.
+   Envuelve el widget en <div class="recaptcha-responsive"><div class="g-recaptcha" ...></div></div>
+   y aquí lo escalamos con transform: scale(), reclamando el alto sobrante del
+   contenedor para que no deje hueco ni provoque scroll horizontal, y quede centrado.
+   El desktop no se ve afectado (escala 1 por defecto). */
+.recaptcha-responsive {
+  display: flex;
+  justify-content: center;       /* centrado */
+  width: 100%;
+  overflow: hidden;              /* evita scroll horizontal por el desborde */
+}
+.recaptcha-responsive .g-recaptcha {
+  transform-origin: 0 0;
+}
+/* El widget mide 304x78px. Al escalarlo, ajustamos el alto del contenedor
+   para que no quede espacio vacío debajo. */
+@media (max-width: 360px) {
+  .recaptcha-responsive { height: calc(78px * 0.86); }
+  .recaptcha-responsive .g-recaptcha { transform: scale(0.86); }
+}
+@media (max-width: 320px) {
+  .recaptcha-responsive { height: calc(78px * 0.77); }
+  .recaptcha-responsive .g-recaptcha { transform: scale(0.77); }
+}
