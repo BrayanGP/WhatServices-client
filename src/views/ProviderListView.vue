@@ -24,15 +24,33 @@ const categories = ref([])
 const catOpen = ref(false)
 const catSearch = ref('')
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-const filteredCats = computed(() => {
-  const q = norm(catSearch.value)
-  return q ? categories.value.filter((c) => norm(c.name).includes(q)) : categories.value
-})
-const selectCat = (name) => { searchCategory.value = name; catOpen.value = false; catSearch.value = ''; search() }
 
 // Navegación por categorías (carruseles)
 const groups = ref([])
 const browseLoading = ref(false)
+
+// Categorías para el selector: las del admin MÁS las que realmente usan los proveedores.
+// Así el desplegable no queda vacío aunque el admin aún no haya aprobado categorías.
+const browseCats = computed(() => {
+  const m = new Map(categories.value.map((c) => [norm(c.name), { _id: c._id, name: c.name, icon: c.icon || '🔧' }]))
+  for (const g of groups.value) {
+    if (g.name === 'Otros servicios') continue
+    const k = norm(g.name)
+    if (!m.has(k)) m.set(k, { _id: k, name: g.name, icon: g.icon || '🔧' })
+  }
+  for (const p of store.providers) {
+    for (const name of (p.categories || [])) {
+      const k = norm(name)
+      if (!m.has(k)) m.set(k, { _id: k, name, icon: '🔧' })
+    }
+  }
+  return Array.from(m.values()).sort((a, b) => a.name.localeCompare(b.name))
+})
+const filteredCats = computed(() => {
+  const q = norm(catSearch.value)
+  return q ? browseCats.value.filter((c) => norm(c.name).includes(q)) : browseCats.value
+})
+const selectCat = (name) => { searchCategory.value = name; catOpen.value = false; catSearch.value = ''; search() }
 
 const swiperBreakpoints = {
   0: { slidesPerView: 1.15, spaceBetween: 12 },
@@ -45,13 +63,23 @@ const loadGrouped = async () => {
   try {
     const data = await fetch(`${API}/providers?limit=300`).then((r) => r.json())
     const provs = data.providers || []
-    groups.value = categories.value
-      .map((c) => ({
-        name: c.name,
-        icon: c.icon || '🔧',
-        providers: provs.filter((p) => (p.categories || []).includes(c.name)).slice(0, 10),
-      }))
+    // Agrupamos por las categorías REALES de cada proveedor (no solo por las del admin),
+    // para que los proveedores siempre aparezcan aunque su categoría aún esté pendiente.
+    // Los que no tengan categoría caen en "Otros servicios".
+    const iconByName = new Map(categories.value.map((c) => [norm(c.name), c.icon || '🔧']))
+    const map = new Map() // key: nombre normalizado → { name, icon, providers: [] }
+    for (const p of provs) {
+      const cats = (p.categories && p.categories.length) ? p.categories : ['Otros servicios']
+      for (const cat of cats) {
+        const key = norm(cat)
+        if (!map.has(key)) map.set(key, { name: cat, icon: iconByName.get(key) || '🔧', providers: [] })
+        const g = map.get(key)
+        if (g.providers.length < 10 && !g.providers.some((x) => x._id === p._id)) g.providers.push(p)
+      }
+    }
+    groups.value = Array.from(map.values())
       .filter((g) => g.providers.length)
+      .sort((a, b) => a.name.localeCompare(b.name))
   } catch (e) { groups.value = [] }
   finally { browseLoading.value = false }
 }
