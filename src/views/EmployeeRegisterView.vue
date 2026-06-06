@@ -244,7 +244,30 @@ const form = ref({
   categories: [], lat: null, lng: null,
 })
 
+// ── Documentos legales y aceptación ──────────────────────────────────────────
+const acceptedLegal = ref(false)        // checkbox obligatorio de Términos + Privacidad
+const legalTouched = ref(false)
+const legal = ref({
+  terms:   { url: import.meta.env.VITE_TERMS_URL   || '', version: '1.0' },
+  privacy: { url: import.meta.env.VITE_PRIVACY_URL || '', version: '1.0' },
+})
+const PUBLIC_BACKEND = import.meta.env.VITE_PUBLIC_BACKEND_URL || ''
+// Enlaces de descarga, con respaldo a la ruta del backend que entrega el PDF como adjunto.
+const termsHref = computed(() => legal.value.terms.url || (PUBLIC_BACKEND ? `${PUBLIC_BACKEND}/legal/download/terms` : '#'))
+const privacyHref = computed(() => legal.value.privacy.url || (PUBLIC_BACKEND ? `${PUBLIC_BACKEND}/legal/download/privacy` : '#'))
+// Toma las URLs de descarga y versiones del backend (GET /legal/docs); si falla, usa las de .env.
+const loadLegalDocs = async () => {
+  try {
+    const res = await fetch(`${API}/legal/docs`)
+    if (!res.ok) return
+    const data = await res.json()
+    if (data?.terms?.url)   legal.value.terms   = data.terms
+    if (data?.privacy?.url) legal.value.privacy = data.privacy
+  } catch { /* se conservan los valores de .env */ }
+}
+
 onMounted(async () => {
+  loadLegalDocs()
   try {
     const res = await fetch(`${API}/categories`)
     categories.value = await res.json()
@@ -340,12 +363,23 @@ const captureLocation = () => {
 const submit = async () => {
   // Marcar todos como tocados para mostrar errores
   Object.keys(validators).forEach(f => { touched.value[f] = true })
+  legalTouched.value = true
   if (!isFormValid.value) return
+  // Debe aceptar Términos y Aviso de Privacidad antes de registrarse.
+  if (!acceptedLegal.value) {
+    error.value = 'Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar.'
+    return
+  }
 
   loading.value = true
   error.value = ''
   try {
-    const payload = { ...form.value, phone: `${dialCode.value}${form.value.phone}` }
+    const payload = {
+      ...form.value,
+      phone: `${dialCode.value}${form.value.phone}`,
+      acceptedTerms: true, termsVersion: legal.value.terms.version || '1.0',
+      acceptedPrivacy: true, privacyVersion: legal.value.privacy.version || '1.0',
+    }
     const res = await fetch(`${API}/providers/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -717,9 +751,28 @@ const uploadPhotos = async () => {
           </div>
         </div>
 
-        <button @click="submit" :disabled="loading"
-          class="w-full bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
-          :class="!loading ? 'hover:bg-brand-lightGreen' : ''"
+        <!-- Aceptación obligatoria de Términos y Aviso de Privacidad -->
+        <div class="pt-1">
+          <label class="flex items-start gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" v-model="acceptedLegal" @change="legalTouched = true"
+              class="mt-0.5 h-4 w-4 shrink-0 accent-brand-green cursor-pointer" />
+            <span>
+              Acepto los
+              <a :href="termsHref" target="_blank" rel="noopener" download
+                class="text-[#2563eb] underline hover:text-blue-800 font-medium">Términos y Condiciones</a>
+              y el
+              <a :href="privacyHref" target="_blank" rel="noopener" download
+                class="text-[#2563eb] underline hover:text-blue-800 font-medium">Aviso de Privacidad</a>.
+            </span>
+          </label>
+          <p v-if="legalTouched && !acceptedLegal" class="text-xs text-red-500 mt-1">
+            Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar.
+          </p>
+        </div>
+
+        <button @click="submit" :disabled="loading || !acceptedLegal"
+          class="w-full bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="(!loading && acceptedLegal) ? 'hover:bg-brand-lightGreen' : ''"
         >
           {{ loading ? 'Registrando...' : 'Continuar' }}
         </button>
