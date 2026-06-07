@@ -64,9 +64,6 @@ const logout = async () => {
 
     <!-- Menu movil -->
     <div v-if="isOpen" class="md:hidden bg-white border-t border-gray-100 px-4 py-4 flex flex-col gap-4 shadow-inner">
-      <router-link v-if="!auth.isLoggedIn" to="/providers" class="text-brand-dark hover:text-brand-green text-sm py-1 font-semibold transition-colors" @click="isOpen = false">
-        Profesionales
-      </router-link>
       <template v-if="auth.isLoggedIn">
         <div class="border-t border-gray-100 pt-3 flex flex-col gap-3">
           <router-link to="/mi-perfil" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
@@ -76,7 +73,7 @@ const logout = async () => {
         </div>
       </template>
       <template v-else>
-        <div class="border-t border-gray-100 pt-4 flex flex-col gap-3">
+        <div class="flex flex-col gap-3">
           <router-link to="/login" class="border border-brand-green text-brand-green hover:bg-brand-green hover:text-white px-4 py-2 rounded-lg text-sm font-semibold text-center shadow-sm transition-all" @click="isOpen = false">
             Ingresar
           </router-link>
