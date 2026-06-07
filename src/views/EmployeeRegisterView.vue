@@ -176,6 +176,7 @@ const isFormValid = computed(() => {
   const required = ['name','businessName','phone','password','city','postalCode','description','address']
   return required.every(f => validators[f]?.(form.value[f]) === true)
     && (validators.email(form.value.email) === true)
+    && form.value.categories.length > 0 // al menos una categoría (seleccionada o creada)
 })
 
 // ── Filtro nombre: solo letras ────────────────────────────────────────────────
@@ -296,19 +297,11 @@ const onAddressInput = () => {
   addressDebounce = setTimeout(async () => {
     addressLoading.value = true
     try {
-      const q = encodeURIComponent(form.value.address)
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=6&countrycodes=mx`,
-        { headers: { 'Accept-Language': 'es' } }
-      )
-      addressSuggestions.value = (await res.json()).map(p => ({
-        label: p.display_name,
-        city: p.address?.city || p.address?.town || p.address?.village || p.address?.municipality || '',
-        postalCode: p.address?.postcode || '',
-        lat: parseFloat(p.lat),
-        lng: parseFloat(p.lon),
-      }))
-    } catch { /* sin sugerencias */ }
+      // Geocodificación vía backend (evita bloqueos/CORS de Nominatim desde el navegador).
+      const res = await fetch(`${API}/geo/search?q=${encodeURIComponent(form.value.address)}`)
+      const data = await res.json()
+      addressSuggestions.value = Array.isArray(data) ? data : []
+    } catch { addressSuggestions.value = [] }
     finally { addressLoading.value = false }
   }, 450)
 }
@@ -363,6 +356,7 @@ const captureLocation = () => {
 const submit = async () => {
   // Marcar todos como tocados para mostrar errores
   Object.keys(validators).forEach(f => { touched.value[f] = true })
+  touched.value.categories = true
   legalTouched.value = true
   if (!isFormValid.value) return
   // Debe aceptar Términos y Aviso de Privacidad antes de registrarse.
@@ -618,10 +612,10 @@ const uploadPhotos = async () => {
           <p v-if="fieldError('description')" class="text-xs text-red-500 mt-1">{{ fieldError('description') }}</p>
         </div>
 
-        <!-- Categorías (opcional) -->
+        <!-- Categorías (obligatorio) -->
         <div>
           <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-medium text-gray-700">¿Qué servicios ofreces?</p>
+            <p class="text-sm font-medium text-gray-700">¿Qué servicios ofreces? *</p>
             <button type="button" @click="showCatModal = true"
               class="text-xs text-brand-green border border-brand-green px-2 py-1 rounded-full hover:bg-brand-green hover:text-white transition-colors"
             >+ Nueva categoría</button>
@@ -667,6 +661,9 @@ const uploadPhotos = async () => {
               </div>
             </div>
           </div>
+          <p v-if="touched.categories && !form.categories.length" class="text-xs text-red-500 mt-1">
+            Selecciona o crea al menos una categoría.
+          </p>
         </div>
 
         <!-- Ubicación -->
