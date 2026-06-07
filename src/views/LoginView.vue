@@ -141,12 +141,12 @@ const doReset = async () => {
 
       <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-4">{{ error }}</div>
 
-      <div class="flex gap-2 mb-3">
-        <select v-model="loginDial" class="border border-gray-200 rounded-lg px-2 py-2.5 text-sm bg-white shrink-0 w-24 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen">
+      <div class="flex gap-2 mb-3 items-center w-full">
+        <select v-model="loginDial" class="border border-gray-200 rounded-lg px-2 py-2.5 text-sm bg-white shrink-0 w-24 box-border focus:outline-none focus:ring-2 focus:ring-brand-lightGreen">
           <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
         </select>
         <input v-model="loginPhone" @input="onLoginPhone" inputmode="numeric" maxlength="10" placeholder="Teléfono"
-          class="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+          class="flex-1 w-full min-w-0 box-border border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
       </div>
       <div class="relative mb-2">
         <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Contraseña" @keyup.enter="submit"
@@ -162,7 +162,7 @@ const doReset = async () => {
       <div class="flex items-center gap-2 mb-3">
         <span class="text-sm text-gray-600 shrink-0">¿Cuánto es <b>{{ cA }} {{ cOp }} {{ cB }}</b>?</span>
         <input v-model="cAns" inputmode="numeric" placeholder="Resultado" @keyup.enter="submit"
-          class="flex-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
+          class="flex-1 w-full min-w-0 box-border border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-lightGreen" />
         <button type="button" @click="genCaptcha" title="Otro reto" class="text-gray-400 hover:text-gray-600">🔄</button>
       </div>
 
@@ -198,12 +198,12 @@ const doReset = async () => {
         <!-- Paso 1: teléfono -->
         <div v-if="resetStep === 'phone'" class="space-y-3 mt-2">
           <p class="text-xs text-gray-500">Te enviaremos un código por WhatsApp al teléfono con el que te registraste.</p>
-          <div class="flex gap-2">
-            <select v-model="rDial" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-24 focus:outline-none focus:ring-2 focus:ring-brand-green">
+          <div class="flex gap-2 items-center w-full">
+            <select v-model="rDial" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-24 box-border focus:outline-none focus:ring-2 focus:ring-brand-green">
               <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
             </select>
             <input v-model="rPhone" @input="onPhoneInput" inputmode="numeric" maxlength="10" placeholder="Teléfono (10 dígitos)"
-              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" @keyup.enter="sendCode" />
+              class="flex-1 w-full min-w-0 box-border border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" @keyup.enter="sendCode" />
           </div>
           <button @click="sendCode" :disabled="rLoading"
             class="w-full bg-brand-green text-white py-2.5 rounded-lg text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50">
