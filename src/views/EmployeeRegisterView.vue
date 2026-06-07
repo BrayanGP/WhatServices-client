@@ -468,13 +468,13 @@ const uploadPhotos = async () => {
         <input v-model="otpName" @input="onOtpName" placeholder="Tu nombre *" :disabled="otpSent || isBlocked"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
 
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center w-full">
           <select v-model="otpDial" :disabled="otpSent || isBlocked"
-            class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-36 focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100">
+            class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-32 box-border focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100">
             <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
           </select>
           <input v-model="otpPhone" @input="onOtpPhone" inputmode="numeric" maxlength="10" placeholder="Teléfono *" :disabled="otpSent || isBlocked"
-            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
+            class="flex-1 w-full min-w-0 box-border border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
         </div>
 
         <div v-if="otpError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded">{{ otpError }}</div>
