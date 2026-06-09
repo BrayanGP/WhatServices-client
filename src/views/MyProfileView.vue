@@ -123,9 +123,15 @@ const savePhotos = async () => {
   finally { uploadingPhotos.value = false }
 }
 
-// QR que apunta al perfil público del proveedor en el cliente web
-const profileQrUrl  = computed(() => provider.value ? `${API}/providers/${provider.value._id}/profile-qr` : '')
-const profilePageUrl = computed(() => provider.value ? `${CLIENT_URL}/providers/${provider.value._id}` : '')
+// QR generado en el frontend con qrserver.com (sin headers, funciona como <img src>)
+const profilePageUrl = computed(() =>
+  provider.value ? `${CLIENT_URL}/providers/${provider.value._id}` : ''
+)
+const profileQrUrl = computed(() => {
+  if (!profilePageUrl.value) return ''
+  const data = encodeURIComponent(profilePageUrl.value)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${data}&color=1a3a2a&bgcolor=ffffff&margin=10`
+})
 
 const downloadQr = async () => {
   if (!profileQrUrl.value) return
@@ -324,21 +330,14 @@ const downloadQr = async () => {
           >Copiar</button>
         </div>
 
-        <!-- Acciones -->
-        <div class="flex gap-3 justify-center">
+        <!-- Acción descarga -->
+        <div class="flex justify-center">
           <button
             @click="downloadQr"
-            class="inline-flex items-center gap-2 bg-brand-green text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen transition-colors shadow-sm"
+            class="inline-flex items-center gap-2 bg-brand-green text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen transition-colors shadow-sm"
           >
             ⬇️ Descargar QR
           </button>
-          <a
-            :href="profilePageUrl"
-            target="_blank"
-            class="inline-flex items-center gap-2 border border-brand-green text-brand-green px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-green/5 transition-colors"
-          >
-            👁️ Ver perfil
-          </a>
         </div>
       </div>
     </template>
