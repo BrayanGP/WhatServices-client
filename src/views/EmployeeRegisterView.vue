@@ -119,6 +119,15 @@ const sendOtp = async () => {
     const data = await res.json()
     if (res.status === 429) { startBlock(data.remainingMs, otpPhone.value); throw new Error(data.message || 'Bloqueado') }
     if (!res.ok) throw new Error(data.message || 'Error al enviar el código')
+    // OTP desactivado temporalmente en el backend → continuar sin código.
+    if (data.otpDisabled) {
+      form.value.name = otpName.value
+      form.value.phone = otpPhone.value
+      dialCode.value = otpDial.value
+      localStorage.removeItem(BLOCK_KEY)
+      step.value = 1
+      return
+    }
     otpSent.value = true; otpAttemptsLeft.value = null; otpCode.value = ''
     startCodeTimer(data.expiresInMs)
   } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
