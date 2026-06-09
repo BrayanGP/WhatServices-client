@@ -166,11 +166,11 @@ const doReset = async () => {
         <button type="button" @click="genCaptcha" title="Otro reto" class="text-gray-400 hover:text-gray-600">🔄</button>
       </div>
 
-      <div class="text-right mb-4">
+      <!-- <div class="text-right mb-4">
         <button type="button" @click="openReset" class="text-xs text-brand-green hover:text-brand-lightGreen hover:underline font-medium">
           ¿Olvidaste tu contraseña?
         </button>
-      </div>
+      </div> -->
 
       <button @click="submit" :disabled="loading"
         class="w-full bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-semibold shadow-sm transition-all duration-200">
