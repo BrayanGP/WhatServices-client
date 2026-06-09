@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
 import { track } from '../lib/analytics'
 import { Swiper, SwiperSlide } from 'swiper/vue'
@@ -17,6 +17,7 @@ const galleryBreakpoints = {
 }
 
 const route  = useRoute()
+const router = useRouter()
 const store  = useProvidersStore()
 const API    = import.meta.env.VITE_API_URL || '/api'
 
@@ -136,6 +137,17 @@ const waLink = computed(() => {
   </Teleport>
 
   <main v-if="provider" class="max-w-3xl mx-auto py-8 px-4 space-y-5">
+
+    <!-- Botón regresar -->
+    <button
+      @click="router.back()"
+      class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-green transition-colors group"
+    >
+      <span class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-brand-green group-hover:bg-brand-green/5 transition-colors">
+        ←
+      </span>
+      Regresar
+    </button>
 
     <!-- ── Tarjeta principal ── -->
     <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
