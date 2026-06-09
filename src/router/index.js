@@ -15,6 +15,7 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior: () => ({ top: 0, behavior: 'smooth' }),
 })
 
 // Un profesional logueado no debe ver el listado de otros prestadores

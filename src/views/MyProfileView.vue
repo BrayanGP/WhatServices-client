@@ -15,19 +15,48 @@ const saving = ref(false)
 const msg = ref('')
 const lightbox = ref(null)
 
-// Detección de cambios (dirty) y validación de categorías
-const original = ref('')
-const snap = () => JSON.stringify({
-  businessName: provider.value?.businessName || '',
-  description: provider.value?.description || '',
-  city: provider.value?.city || '',
-  postalCode: provider.value?.postalCode || '',
-  categories: [...(provider.value?.categories || [])].sort(),
-  availability: provider.value?.availability || '',
+// ── Modal de edición ──────────────────────────────────────────────────────────
+const editModal = ref(false)
+const draft = ref({})
+
+const openEdit = () => {
+  draft.value = {
+    businessName: provider.value.businessName || '',
+    description:  provider.value.description  || '',
+    city:         provider.value.city         || '',
+    postalCode:   provider.value.postalCode   || '',
+    categories:   [...(provider.value.categories || [])],
+    availability: provider.value.availability || 'available',
+  }
+  editModal.value = true
+}
+
+const toggleDraftCat = (name) => {
+  const i = draft.value.categories.indexOf(name)
+  if (i === -1) draft.value.categories.push(name)
+  else draft.value.categories.splice(i, 1)
+}
+
+const draftHasCategory = computed(() => draft.value.categories?.length > 0)
+const draftDirty = computed(() => {
+  if (!provider.value) return false
+  return JSON.stringify({
+    businessName: draft.value.businessName,
+    description:  draft.value.description,
+    city:         draft.value.city,
+    postalCode:   draft.value.postalCode,
+    categories:   [...(draft.value.categories || [])].sort(),
+    availability: draft.value.availability,
+  }) !== JSON.stringify({
+    businessName: provider.value.businessName || '',
+    description:  provider.value.description  || '',
+    city:         provider.value.city         || '',
+    postalCode:   provider.value.postalCode   || '',
+    categories:   [...(provider.value.categories || [])].sort(),
+    availability: provider.value.availability || 'available',
+  })
 })
-const dirty = computed(() => !!provider.value && snap() !== original.value)
-const hasCategory = computed(() => (provider.value?.categories?.length || 0) > 0)
-const canSave = computed(() => dirty.value && hasCategory.value)
+const canSave = computed(() => draftDirty.value && draftHasCategory.value)
 
 onMounted(async () => {
   if (!auth.isLoggedIn) { router.push('/login'); return }
@@ -54,24 +83,23 @@ const avgStars = computed(() => {
   })
 })
 
-const toggleCat = (name) => {
-  const arr = provider.value.categories || (provider.value.categories = [])
-  const i = arr.indexOf(name)
-  if (i === -1) arr.push(name); else arr.splice(i, 1)
-}
-
 const save = async () => {
   saving.value = true; msg.value = ''
   try {
-    const { businessName, description, city, postalCode, categories: cats, availability } = provider.value
+    const { businessName, description, city, postalCode, categories: cats, availability } = draft.value
     const res = await auth.authFetch(`${API}/providers/${provider.value._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability }),
     })
-    if (res.ok) { provider.value = await res.json(); original.value = snap(); msg.value = '✅ Guardado' }
-    else msg.value = 'Error al guardar'
-    setTimeout(() => (msg.value = ''), 2500)
+    if (res.ok) {
+      provider.value = await res.json()
+      editModal.value = false
+      msg.value = '✅ Información actualizada'
+    } else {
+      msg.value = 'Error al guardar'
+    }
+    setTimeout(() => (msg.value = ''), 3000)
   } finally { saving.value = false }
 }
 
@@ -175,8 +203,16 @@ const downloadQr = async () => {
           </span>
         </div>
         <div class="pt-12 px-6 pb-6">
-          <h1 class="text-xl font-bold text-gray-900">{{ provider.businessName }}</h1>
-          <p class="text-sm text-gray-500 mt-0.5">📍 {{ provider.city }}{{ provider.postalCode ? ` · CP ${provider.postalCode}` : '' }}</p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">{{ provider.businessName }}</h1>
+              <p class="text-sm text-gray-500 mt-0.5">📍 {{ provider.city }}{{ provider.postalCode ? ` · CP ${provider.postalCode}` : '' }}</p>
+            </div>
+            <button @click="openEdit"
+              class="shrink-0 flex items-center gap-1.5 border border-brand-green text-brand-green px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-brand-green hover:text-white transition-colors">
+              ✏️ Editar
+            </button>
+          </div>
           <div class="flex items-center gap-2 mt-3">
             <div class="flex gap-0.5">
               <span v-for="(s, i) in avgStars" :key="i" class="text-xl"
@@ -188,49 +224,85 @@ const downloadQr = async () => {
           <div v-if="provider.categories?.length" class="flex flex-wrap gap-2 mt-4">
             <span v-for="cat in provider.categories" :key="cat" class="bg-brand-green/10 text-brand-green text-xs px-3 py-1 rounded-full font-medium">{{ cat }}</span>
           </div>
+          <p v-if="msg" class="text-sm text-brand-green mt-3">{{ msg }}</p>
         </div>
       </div>
 
-      <!-- ── Editar datos ── -->
-      <div class="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-        <h2 class="text-base font-bold text-gray-800 mb-1">Editar información</h2>
-        <input v-model="provider.businessName" placeholder="Nombre del negocio"
-          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
-        <textarea v-model="provider.description" rows="3" placeholder="Descripción"
-          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"></textarea>
-        <div class="grid grid-cols-2 gap-3">
-          <input v-model="provider.city" placeholder="Ciudad"
-            class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
-          <input v-model="provider.postalCode" placeholder="Código postal"
-            class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700 mb-2">Servicios</p>
-          <div class="flex flex-wrap gap-2">
-            <button v-for="c in categories" :key="c._id" type="button" @click="toggleCat(c.name)"
-              class="text-sm px-3 py-1.5 rounded-full border transition-colors"
-              :class="provider.categories?.includes(c.name) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:border-brand-green'">
-              {{ c.icon }} {{ c.name }}
-            </button>
+      <!-- ── Modal editar información ── -->
+      <Teleport to="body">
+        <div v-if="editModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+          <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
+              <h2 class="text-base font-bold text-gray-800">Editar información</h2>
+              <button @click="editModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+
+            <!-- Cuerpo con scroll -->
+            <div class="overflow-y-auto px-6 py-4 space-y-4 flex-1">
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Nombre del negocio</label>
+                <input v-model="draft.businessName" placeholder="Nombre del negocio"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Descripción</label>
+                <textarea v-model="draft.description" rows="3" placeholder="Describe tus servicios"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"></textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-medium text-gray-500 mb-1 block">Ciudad</label>
+                  <input v-model="draft.city" placeholder="Ciudad"
+                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+                </div>
+                <div>
+                  <label class="text-xs font-medium text-gray-500 mb-1 block">Código postal</label>
+                  <input v-model="draft.postalCode" placeholder="CP"
+                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+                </div>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-2 block">Servicios</label>
+                <div class="flex flex-wrap gap-2">
+                  <button v-for="c in categories" :key="c._id" type="button" @click="toggleDraftCat(c.name)"
+                    class="text-sm px-3 py-1.5 rounded-full border transition-colors"
+                    :class="draft.categories?.includes(c.name) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:border-brand-green'">
+                    {{ c.icon }} {{ c.name }}
+                  </button>
+                </div>
+                <p v-if="!draftHasCategory" class="text-xs text-amber-600 mt-2">⚠️ Selecciona al menos un servicio para guardar.</p>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Disponibilidad</label>
+                <select v-model="draft.availability"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-green">
+                  <option value="available">Disponible</option>
+                  <option value="busy">Ocupado</option>
+                  <option value="inactive">Inactivo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
+              <button @click="save" :disabled="saving || !canSave"
+                class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {{ saving ? 'Guardando...' : 'Guardar cambios' }}
+              </button>
+              <button @click="editModal = false"
+                class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:border-gray-300 transition-colors">
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700 mb-1">Disponibilidad</p>
-          <select v-model="provider.availability" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-green">
-            <option value="available">Disponible</option>
-            <option value="busy">Ocupado</option>
-            <option value="inactive">Inactivo</option>
-          </select>
-        </div>
-        <p v-if="!hasCategory" class="text-xs text-amber-600">⚠️ Selecciona al menos un servicio para poder guardar.</p>
-        <div class="flex items-center gap-3 pt-1">
-          <button @click="save" :disabled="saving || !canSave"
-            class="bg-brand-green text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            {{ saving ? 'Guardando...' : 'Guardar cambios' }}
-          </button>
-          <span class="text-sm text-gray-500">{{ msg }}</span>
-        </div>
-      </div>
+      </Teleport>
 
       <!-- ── Fotos (config tipo EmployeeRegister) ── -->
       <div class="bg-white rounded-2xl shadow-sm p-6 space-y-5">
