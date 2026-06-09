@@ -10,6 +10,7 @@ const routes = [
   { path: '/register', redirect: '/unete' },
   { path: '/unete', component: () => import('../views/EmployeeRegisterView.vue') },
   { path: '/mi-perfil', component: () => import('../views/MyProfileView.vue') },
+  { path: '/terminos', component: () => import('../views/TermsView.vue') },
 ]
 
 const router = createRouter({

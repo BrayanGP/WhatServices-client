@@ -31,7 +31,7 @@ const currentYear = ref(new Date().getFullYear())
       <div>
         <h3 class="text-white font-bold text-sm uppercase tracking-wider mb-4">Soporte</h3>
         <ul class="flex flex-col gap-2.5 text-sm">
-          <li><a href="#" class="hover:text-brand-lightGreen transition-colors">Términos de Servicio</a></li>
+          <li><router-link to="/terminos" class="hover:text-brand-lightGreen transition-colors">Términos de Servicio</router-link></li>
           <li><a href="#" class="hover:text-brand-lightGreen transition-colors">Política de Privacidad</a></li>
           <li><a href="#" class="hover:text-brand-lightGreen transition-colors">Contacto</a></li>
         </ul>
