@@ -20,6 +20,10 @@ if (API_KEY) {
   }
 }
 
+// Analítica: registra una vista por cada navegación.
+import { trackPageview } from './lib/analytics'
+router.afterEach((to) => { trackPageview(to.fullPath) })
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)

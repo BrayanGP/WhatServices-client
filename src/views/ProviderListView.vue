@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
+import { track } from '../lib/analytics'
 import ProviderCard from '../components/ProviderCard.vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import 'swiper/css'
@@ -97,6 +98,7 @@ const load = () => {
 }
 
 const search = () => {
+  track('search', { category: searchCategory.value || '', city: searchCity.value || '', cp: searchCp.value || '' })
   router.push({
     path: '/providers',
     query: {

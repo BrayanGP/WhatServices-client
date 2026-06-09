@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { track } from '../lib/analytics'
 import miLogo from '../assets/logoWhatServices.png'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -142,6 +143,7 @@ const verifyOtp = async () => {
     dialCode.value = otpDial.value
     localStorage.removeItem(BLOCK_KEY)
     clearInterval(codeTimer)
+    track('otp_verified')
     step.value = 1
   } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
 }
@@ -268,6 +270,7 @@ const loadLegalDocs = async () => {
 }
 
 onMounted(async () => {
+  track('unete_view')
   loadLegalDocs()
   try {
     const res = await fetch(`${API}/categories`)
@@ -387,6 +390,7 @@ const submit = async () => {
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('user', JSON.stringify(data.user))
     createdId.value = data.provider._id
+    track('register_success', { id: data.provider._id })
     step.value = 2
   } catch (e) {
     error.value = e.message
