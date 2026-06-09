@@ -5,7 +5,7 @@
     <div class="bg-brand-dark text-white py-16 px-4">
       <div class="max-w-3xl mx-auto text-center">
         <h1 class="text-3xl md:text-4xl font-bold mb-3">Términos y Condiciones de Uso</h1>
-        <p class="text-gray-400 text-sm">Versión 1.0 &mdash; Vigente desde el 6 de junio de 2026</p>
+        <p class="text-gray-400 text-sm">Vigente desde el 6 de junio de 2026</p>
       </div>
     </div>
 
