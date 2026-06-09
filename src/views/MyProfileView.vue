@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const API = import.meta.env.VITE_API_URL || '/api'
-const PUBLIC_BACKEND = import.meta.env.VITE_PUBLIC_BACKEND_URL || ''
+const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -123,7 +123,26 @@ const savePhotos = async () => {
   finally { uploadingPhotos.value = false }
 }
 
-const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
+// QR generado en el frontend con qrserver.com (sin headers, funciona como <img src>)
+const profilePageUrl = computed(() =>
+  provider.value ? `${CLIENT_URL}/providers/${provider.value._id}` : ''
+)
+const profileQrUrl = computed(() => {
+  if (!profilePageUrl.value) return ''
+  const data = encodeURIComponent(profilePageUrl.value)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${data}&color=1a3a2a&bgcolor=ffffff&margin=10`
+})
+
+const downloadQr = async () => {
+  if (!profileQrUrl.value) return
+  const res  = await fetch(profileQrUrl.value)
+  const blob = await res.blob()
+  const a    = document.createElement('a')
+  a.href     = URL.createObjectURL(blob)
+  a.download = `qr-${provider.value.businessName?.replace(/\s+/g, '-').toLowerCase() || provider.value._id}.png`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 </script>
 
 <template>
@@ -276,14 +295,50 @@ const rateQrUrl = () => `${PUBLIC_BACKEND}/wa/rate/${provider.value._id}/qr`
         </div>
       </div>
 
-      <!-- ── QR de calificación ── -->
-      <div class="bg-white rounded-2xl shadow-sm p-6 text-center">
-        <h2 class="text-base font-bold text-gray-800 mb-1">Tu QR de calificación</h2>
-        <p class="text-xs text-gray-500 mb-3">Muéstralo al terminar un trabajo: el cliente lo escanea y te califica por WhatsApp.</p>
-        <img v-if="PUBLIC_BACKEND" :src="rateQrUrl()" alt="QR calificación" class="w-48 h-48 mx-auto rounded-xl" />
-        <p v-else class="text-xs text-amber-600">Configura VITE_PUBLIC_BACKEND_URL para ver el QR.</p>
-        <a v-if="PUBLIC_BACKEND" :href="rateQrUrl()" download
-          class="inline-block mt-2 text-brand-green font-medium text-sm hover:text-brand-lightGreen hover:underline">Descargar QR</a>
+      <!-- ── QR de perfil ── -->
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="text-center mb-4">
+          <h2 class="text-base font-bold text-gray-800">Tu código QR</h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Compártelo o imprímelo — quien lo escanee verá tu perfil completo con reseñas y fotos.
+          </p>
+        </div>
+
+        <!-- QR image -->
+        <div class="flex justify-center mb-4">
+          <div class="p-3 bg-white rounded-2xl ring-1 ring-gray-100 shadow-sm inline-block">
+            <img
+              v-if="profileQrUrl"
+              :src="profileQrUrl"
+              alt="QR de perfil"
+              class="w-44 h-44 rounded-lg"
+            />
+            <div v-else class="w-44 h-44 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 text-4xl">
+              ▦
+            </div>
+          </div>
+        </div>
+
+        <!-- URL destino -->
+        <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 mb-4 max-w-sm mx-auto">
+          <span class="text-gray-400 shrink-0">🔗</span>
+          <p class="text-xs text-gray-500 truncate flex-1">{{ profilePageUrl }}</p>
+          <button
+            @click="navigator.clipboard.writeText(profilePageUrl)"
+            class="text-brand-green text-xs font-medium hover:underline shrink-0"
+            title="Copiar enlace"
+          >Copiar</button>
+        </div>
+
+        <!-- Acción descarga -->
+        <div class="flex justify-center">
+          <button
+            @click="downloadQr"
+            class="inline-flex items-center gap-2 bg-brand-green text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen transition-colors shadow-sm"
+          >
+            ⬇️ Descargar QR
+          </button>
+        </div>
       </div>
     </template>
   </main>
