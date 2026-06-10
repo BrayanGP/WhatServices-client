@@ -62,6 +62,9 @@ const otpName = ref('')
 const otpDial = ref('+52')
 const otpPhone = ref('')
 const otpCode = ref('')
+// OTP por WhatsApp: desactivado hasta aprobar el template en Meta.
+// Pon VITE_OTP_ENABLED=false (debe coincidir con OTP_ENABLED del backend).
+const OTP_ENABLED = import.meta.env.VITE_OTP_ENABLED !== 'false'
 const otpSent = ref(false)
 const otpLoading = ref(false)
 const otpError = ref('')
@@ -470,7 +473,8 @@ const uploadPhotos = async () => {
 
       <!-- ── Paso 0: verificación por OTP ── -->
       <div v-if="step === 'otp'" class="space-y-3">
-        <p class="text-sm text-gray-600 -mt-2">Primero verifica tu teléfono. Te enviaremos un código por WhatsApp. 📲</p>
+        <p v-if="OTP_ENABLED" class="text-sm text-gray-600 -mt-2">Primero verifica tu teléfono. Te enviaremos un código por WhatsApp. 📲</p>
+        <p v-else class="text-sm text-gray-600 -mt-2">Ingresa tu nombre y teléfono para continuar con tu registro. 🧰</p>
 
         <input v-model="otpName" @input="onOtpName" placeholder="Tu nombre *" :disabled="otpSent || isBlocked"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-gray-100" />
@@ -493,7 +497,7 @@ const uploadPhotos = async () => {
         <template v-else>
           <button v-if="!otpSent" @click="sendOtp" :disabled="otpLoading"
             class="w-full bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50">
-            {{ otpLoading ? 'Enviando...' : 'Enviar código' }}
+            {{ otpLoading ? (OTP_ENABLED ? 'Enviando...' : 'Continuando...') : (OTP_ENABLED ? 'Enviar código' : 'Continuar →') }}
           </button>
 
           <template v-else>
