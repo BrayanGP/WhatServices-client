@@ -62,9 +62,9 @@ const otpName = ref('')
 const otpDial = ref('+52')
 const otpPhone = ref('')
 const otpCode = ref('')
-// OTP por WhatsApp: desactivado hasta aprobar el template en Meta.
-// Pon VITE_OTP_ENABLED=false (debe coincidir con OTP_ENABLED del backend).
-const OTP_ENABLED = import.meta.env.VITE_OTP_ENABLED !== 'false'
+// OTP por WhatsApp: desactivado por defecto hasta aprobar el template en Meta.
+// Para activarlo cuando esté aprobado: VITE_OTP_ENABLED=true (debe coincidir con OTP_ENABLED del backend).
+const OTP_ENABLED = import.meta.env.VITE_OTP_ENABLED === 'true'
 const otpSent = ref(false)
 const otpLoading = ref(false)
 const otpError = ref('')
