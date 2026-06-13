@@ -543,6 +543,13 @@ const uploadPhotos = async () => {
           <span class="text-xs text-green-600 ml-auto">Nombre verificado</span>
         </div>
 
+         <!-- Teléfono verificado (no editable) -->
+        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
+          <span class="text-green-600">✓</span>
+          <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
+          <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
+        </div>
+
         <!-- Negocio -->
         <div>
           <input
@@ -553,13 +560,6 @@ const uploadPhotos = async () => {
             @blur="touch('businessName')"
           />
           <p v-if="fieldError('businessName')" class="text-xs text-red-500 mt-1">{{ fieldError('businessName') }}</p>
-        </div>
-
-        <!-- Teléfono verificado (no editable) -->
-        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
-          <span class="text-green-600">✓</span>
-          <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
-          <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
         </div>
 
         <!-- Contraseña con toggle -->
