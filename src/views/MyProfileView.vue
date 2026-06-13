@@ -101,7 +101,8 @@ const save = async () => {
       editModal.value = false
       msg.value = '✅ Información actualizada'
     } else {
-      msg.value = 'Error al guardar'
+      const err = await res.json().catch(() => ({}))
+      msg.value = err.message || 'Error al guardar'
     }
     setTimeout(() => (msg.value = ''), 3000)
   } finally { saving.value = false }
