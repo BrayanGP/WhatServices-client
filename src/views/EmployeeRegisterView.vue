@@ -170,14 +170,10 @@ const validators = {
   name:         v => /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(v?.trim()) || 'Solo se permiten letras',
   businessName: v => v?.trim().length > 0 || 'Campo requerido',
   phone:        v => /^\d{7,10}$/.test(v?.trim()) || 'Solo números, entre 7 y 10 dígitos',
-  email:        v => !v?.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Correo inválido',
   password:     v => (v?.length >= 6) || 'Mínimo 6 caracteres',
   city:         v => v?.trim().length > 0 || 'Campo requerido',
   postalCode:   v => v?.trim().length > 0 || 'Campo requerido',
   description:  v => v?.trim().length > 0 || 'Campo requerido',
-  address:      v => locMode.value === 'gps'
-    ? (form.value.lat != null || 'Captura tu ubicación GPS')
-    : (v?.trim().length > 0 || 'Escribe o selecciona una dirección'),
 }
 
 const fieldError = (field) => {
@@ -187,10 +183,9 @@ const fieldError = (field) => {
 }
 
 const isFormValid = computed(() => {
-  const required = ['name','businessName','phone','password','city','postalCode','description','address']
+  const required = ['name', 'businessName', 'phone', 'password', 'city', 'postalCode', 'description']
   return required.every(f => validators[f]?.(form.value[f]) === true)
-    && (validators.email(form.value.email) === true)
-    && form.value.categories.length > 0 // al menos una categoría (seleccionada o creada)
+    && form.value.categories.length > 0
 })
 
 // ── Filtro nombre: solo letras ────────────────────────────────────────────────
@@ -367,6 +362,16 @@ const captureLocation = () => {
   )
 }
 
+// ── Regresar al paso OTP ─────────────────────────────────────────────────────
+const goBackToOtp = () => {
+  otpSent.value = false
+  otpCode.value = ''
+  otpError.value = ''
+  form.value.name = ''
+  form.value.phone = ''
+  step.value = 'otp'
+}
+
 // ── Submit ────────────────────────────────────────────────────────────────────
 const submit = async () => {
   // Marcar todos como tocados para mostrar errores
@@ -524,17 +529,27 @@ const uploadPhotos = async () => {
       <!-- ── Paso 1 ── -->
       <div v-else-if="step === 1" class="space-y-3">
 
-        <!-- Nombre -->
-        <div>
-          <input
-            v-model="form.name"
-            placeholder="Tu nombre *"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            :class="fieldError('name') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-            @input="onNameInput"
-            @blur="touch('name')"
-          />
-          <p v-if="fieldError('name')" class="text-xs text-red-500 mt-1">{{ fieldError('name') }}</p>
+        <!-- Botón regresar al paso OTP -->
+        <button type="button" @click="goBackToOtp"
+          class="flex items-center gap-1 text-sm text-gray-500 hover:text-brand-green transition-colors -mt-1 mb-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Editar nombre y teléfono
+        </button>
+
+        <!-- Nombre (pre-llenado desde OTP, no editable) -->
+        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
+          <span class="text-green-600">✓</span>
+          <span class="text-gray-700">{{ form.name }}</span>
+          <span class="text-xs text-green-600 ml-auto">Nombre verificado</span>
+        </div>
+
+         <!-- Teléfono verificado (no editable) -->
+        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
+          <span class="text-green-600">✓</span>
+          <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
+          <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
         </div>
 
         <!-- Negocio -->
@@ -547,27 +562,6 @@ const uploadPhotos = async () => {
             @blur="touch('businessName')"
           />
           <p v-if="fieldError('businessName')" class="text-xs text-red-500 mt-1">{{ fieldError('businessName') }}</p>
-        </div>
-
-        <!-- Teléfono verificado (no editable) -->
-        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
-          <span class="text-green-600">✓</span>
-          <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
-          <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <input
-            v-model="form.email"
-            type="text"
-            inputmode="email"
-            placeholder="Correo electrónico (opcional)"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            :class="fieldError('email') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-            @blur="touch('email')"
-          />
-          <p v-if="fieldError('email')" class="text-xs text-red-500 mt-1">{{ fieldError('email') }}</p>
         </div>
 
         <!-- Contraseña con toggle -->
@@ -864,6 +858,10 @@ const uploadPhotos = async () => {
         <!-- Botones de acción -->
         <div class="flex gap-3 pt-1">
           <button
+            @click="step = 3; done = true"
+            class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors font-medium"
+          >Omitir</button>
+          <button
             @click="uploadPhotos"
             :disabled="uploading"
             class="flex-1 bg-brand-green text-white py-2.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-60"
@@ -872,12 +870,8 @@ const uploadPhotos = async () => {
             <span v-if="uploading" class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span> Subiendo...
             </span>
-            <span v-else>Subir fotos y finalizar</span>
+            <span v-else>Subir fotos</span>
           </button>
-          <button
-            @click="step = 3; done = true"
-            class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors"
-          >Omitir</button>
         </div>
       </div>
 
