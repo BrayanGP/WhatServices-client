@@ -171,6 +171,8 @@ const validators = {
   businessName: v => v?.trim().length > 0 || 'Campo requerido',
   phone:        v => /^\d{7,10}$/.test(v?.trim()) || 'Solo números, entre 7 y 10 dígitos',
   password:     v => (v?.length >= 6) || 'Mínimo 6 caracteres',
+  city:         v => v?.trim().length > 0 || 'Campo requerido',
+  postalCode:   v => v?.trim().length > 0 || 'Campo requerido',
   description:  v => v?.trim().length > 0 || 'Campo requerido',
 }
 
@@ -181,7 +183,7 @@ const fieldError = (field) => {
 }
 
 const isFormValid = computed(() => {
-  const required = ['name', 'businessName', 'phone', 'password', 'description']
+  const required = ['name', 'businessName', 'phone', 'password', 'city', 'postalCode', 'description']
   return required.every(f => validators[f]?.(form.value[f]) === true)
     && form.value.categories.length > 0
 })
@@ -583,6 +585,30 @@ const uploadPhotos = async () => {
             </button>
           </div>
           <p v-if="fieldError('password')" class="text-xs text-red-500 mt-1">{{ fieldError('password') }}</p>
+        </div>
+
+        <!-- Ciudad y CP -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <input
+              v-model="form.city"
+              placeholder="Ciudad *"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              :class="fieldError('city') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
+              @blur="touch('city')"
+            />
+            <p v-if="fieldError('city')" class="text-xs text-red-500 mt-1">{{ fieldError('city') }}</p>
+          </div>
+          <div>
+            <input
+              v-model="form.postalCode"
+              placeholder="Código postal *"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              :class="fieldError('postalCode') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
+              @blur="touch('postalCode')"
+            />
+            <p v-if="fieldError('postalCode')" class="text-xs text-red-500 mt-1">{{ fieldError('postalCode') }}</p>
+          </div>
         </div>
 
         <!-- Descripción -->
