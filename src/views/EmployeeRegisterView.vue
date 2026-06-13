@@ -170,14 +170,8 @@ const validators = {
   name:         v => /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(v?.trim()) || 'Solo se permiten letras',
   businessName: v => v?.trim().length > 0 || 'Campo requerido',
   phone:        v => /^\d{7,10}$/.test(v?.trim()) || 'Solo números, entre 7 y 10 dígitos',
-  email:        v => !v?.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Correo inválido',
   password:     v => (v?.length >= 6) || 'Mínimo 6 caracteres',
-  city:         v => v?.trim().length > 0 || 'Campo requerido',
-  postalCode:   v => v?.trim().length > 0 || 'Campo requerido',
   description:  v => v?.trim().length > 0 || 'Campo requerido',
-  address:      v => locMode.value === 'gps'
-    ? (form.value.lat != null || 'Captura tu ubicación GPS')
-    : (v?.trim().length > 0 || 'Escribe o selecciona una dirección'),
 }
 
 const fieldError = (field) => {
@@ -187,10 +181,9 @@ const fieldError = (field) => {
 }
 
 const isFormValid = computed(() => {
-  const required = ['name','businessName','phone','password','city','postalCode','description','address']
+  const required = ['name', 'businessName', 'phone', 'password', 'description']
   return required.every(f => validators[f]?.(form.value[f]) === true)
-    && (validators.email(form.value.email) === true)
-    && form.value.categories.length > 0 // al menos una categoría (seleccionada o creada)
+    && form.value.categories.length > 0
 })
 
 // ── Filtro nombre: solo letras ────────────────────────────────────────────────
@@ -524,17 +517,11 @@ const uploadPhotos = async () => {
       <!-- ── Paso 1 ── -->
       <div v-else-if="step === 1" class="space-y-3">
 
-        <!-- Nombre -->
-        <div>
-          <input
-            v-model="form.name"
-            placeholder="Tu nombre *"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            :class="fieldError('name') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-            @input="onNameInput"
-            @blur="touch('name')"
-          />
-          <p v-if="fieldError('name')" class="text-xs text-red-500 mt-1">{{ fieldError('name') }}</p>
+        <!-- Nombre (pre-llenado desde OTP, no editable) -->
+        <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
+          <span class="text-green-600">✓</span>
+          <span class="text-gray-700">{{ form.name }}</span>
+          <span class="text-xs text-green-600 ml-auto">Nombre verificado</span>
         </div>
 
         <!-- Negocio -->
@@ -554,20 +541,6 @@ const uploadPhotos = async () => {
           <span class="text-green-600">✓</span>
           <span class="text-gray-700">{{ dialCode }} {{ form.phone }}</span>
           <span class="text-xs text-green-600 ml-auto">Teléfono verificado</span>
-        </div>
-
-        <!-- Email -->
-        <div>
-          <input
-            v-model="form.email"
-            type="text"
-            inputmode="email"
-            placeholder="Correo electrónico (opcional)"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            :class="fieldError('email') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-            @blur="touch('email')"
-          />
-          <p v-if="fieldError('email')" class="text-xs text-red-500 mt-1">{{ fieldError('email') }}</p>
         </div>
 
         <!-- Contraseña con toggle -->
@@ -591,30 +564,6 @@ const uploadPhotos = async () => {
             </button>
           </div>
           <p v-if="fieldError('password')" class="text-xs text-red-500 mt-1">{{ fieldError('password') }}</p>
-        </div>
-
-        <!-- Ciudad y CP -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <input
-              v-model="form.city"
-              placeholder="Ciudad *"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-              :class="fieldError('city') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-              @blur="touch('city')"
-            />
-            <p v-if="fieldError('city')" class="text-xs text-red-500 mt-1">{{ fieldError('city') }}</p>
-          </div>
-          <div>
-            <input
-              v-model="form.postalCode"
-              placeholder="Código postal *"
-              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-              :class="fieldError('postalCode') ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-brand-green'"
-              @blur="touch('postalCode')"
-            />
-            <p v-if="fieldError('postalCode')" class="text-xs text-red-500 mt-1">{{ fieldError('postalCode') }}</p>
-          </div>
         </div>
 
         <!-- Descripción -->
