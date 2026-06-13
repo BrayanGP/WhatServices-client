@@ -42,6 +42,12 @@ const galleryPhotos = computed(() => {
   if (galleryAlbum.value === 'all') return all
   return all.filter((p) => (p.albums || []).includes(galleryAlbum.value))
 })
+// Al abrir el visor, Swiper a veces mide mal el ancho (modal recién mostrado): forzar update.
+const onLightboxSwiper = (s) => {
+  const fix = () => { try { s.update(); s.slideTo(lightboxIndex.value ?? 0, 0); } catch (e) {} }
+  requestAnimationFrame(fix)
+  setTimeout(fix, 80)
+}
 
 // ── deviceId: una reseña por dispositivo ─────────────────────────────────────
 const getDeviceId = () => {
@@ -152,10 +158,17 @@ const waLink = computed(() => {
       <Swiper
         :modules="galleryModules"
         :initial-slide="lightboxIndex"
+        :slides-per-view="1"
+        :centered-slides="true"
+        :space-between="0"
+        :observer="true"
+        :observe-parents="true"
+        :resize-observer="true"
         navigation
         :pagination="{ clickable: true }"
+        @swiper="onLightboxSwiper"
         class="ws-lightbox w-full h-full">
-        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="flex items-center justify-center">
+        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="!flex items-center justify-center">
           <img :src="p.url" @click.stop class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
         </SwiperSlide>
       </Swiper>
@@ -382,6 +395,10 @@ const waLink = computed(() => {
 }
 
 /* Lightbox: carrusel a pantalla completa con flechas/bullets blancos */
+.ws-lightbox :deep(.swiper-slide) {
+  width: 100%;
+  height: 100%;
+}
 .ws-lightbox :deep(.swiper-button-next),
 .ws-lightbox :deep(.swiper-button-prev) {
   color: #ffffff;
