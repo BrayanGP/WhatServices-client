@@ -27,6 +27,7 @@ const openEdit = () => {
     postalCode:   provider.value.postalCode   || '',
     categories:   [...(provider.value.categories || [])],
     availability: provider.value.availability || 'available',
+    email:        auth.user?.email            || '',
   }
   editModal.value = true
 }
@@ -47,6 +48,7 @@ const draftDirty = computed(() => {
     postalCode:   draft.value.postalCode,
     categories:   [...(draft.value.categories || [])].sort(),
     availability: draft.value.availability,
+    email:        draft.value.email,
   }) !== JSON.stringify({
     businessName: provider.value.businessName || '',
     description:  provider.value.description  || '',
@@ -54,6 +56,7 @@ const draftDirty = computed(() => {
     postalCode:   provider.value.postalCode   || '',
     categories:   [...(provider.value.categories || [])].sort(),
     availability: provider.value.availability || 'available',
+    email:        auth.user?.email            || '',
   })
 })
 const canSave = computed(() => draftDirty.value && draftHasCategory.value)
@@ -86,18 +89,20 @@ const avgStars = computed(() => {
 const save = async () => {
   saving.value = true; msg.value = ''
   try {
-    const { businessName, description, city, postalCode, categories: cats, availability } = draft.value
+    const { businessName, description, city, postalCode, categories: cats, availability, email } = draft.value
     const res = await auth.authFetch(`${API}/providers/${provider.value._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability }),
+      body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability, email }),
     })
+    if (res.ok) auth.user = { ...auth.user, email: email?.trim() || null }
     if (res.ok) {
       provider.value = await res.json()
       editModal.value = false
       msg.value = '✅ Información actualizada'
     } else {
-      msg.value = 'Error al guardar'
+      const err = await res.json().catch(() => ({}))
+      msg.value = err.message || 'Error al guardar'
     }
     setTimeout(() => (msg.value = ''), 3000)
   } finally { saving.value = false }
@@ -355,6 +360,12 @@ const downloadQr = async () => {
                 <label class="text-xs font-medium text-gray-500 mb-1 block">Descripción</label>
                 <textarea v-model="draft.description" rows="3" placeholder="Describe tus servicios"
                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"></textarea>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Correo electrónico</label>
+                <input v-model="draft.email" type="text" inputmode="email" placeholder="correo@ejemplo.com"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
               </div>
 
               <div class="grid grid-cols-2 gap-3">
