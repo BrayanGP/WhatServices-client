@@ -28,6 +28,21 @@ const reviewError = ref('')
 const reviewOk    = ref(false)
 const lightbox    = ref(null) // URL de foto ampliada
 
+// ── Galería por categoría/álbum ──────────────────────────────────────────────
+const galleryAlbum = ref('all')
+// Categorías propias que realmente tienen fotos (además de "Todas")
+const galleryAlbums = computed(() => {
+  const fromList = provider.value?.albums || []
+  const fromPhotos = (provider.value?.photos || []).flatMap((p) => p.albums || [])
+  const custom = [...new Set([...fromList, ...fromPhotos])].filter((a) => a && a !== 'default' && a !== 'WhatsApp')
+  return custom.filter((a) => (provider.value?.photos || []).some((p) => (p.albums || []).includes(a)))
+})
+const galleryPhotos = computed(() => {
+  const all = provider.value?.photos || []
+  if (galleryAlbum.value === 'all') return all
+  return all.filter((p) => (p.albums || []).includes(galleryAlbum.value))
+})
+
 // ── deviceId: una reseña por dispositivo ─────────────────────────────────────
 const getDeviceId = () => {
   let id = localStorage.getItem('ws_device_id')
@@ -215,6 +230,15 @@ const waLink = computed(() => {
     <!-- ── Galería de fotos (carrusel) ── -->
     <div v-if="provider.photos?.length" class="bg-white rounded-2xl shadow-sm p-4">
       <h2 class="text-sm font-semibold text-gray-700 mb-3">Trabajos realizados</h2>
+      <!-- Filtro por categoría (solo si el proveedor tiene categorías propias con fotos) -->
+      <div v-if="galleryAlbums.length" class="flex flex-wrap gap-1.5 mb-3">
+        <button type="button" @click="galleryAlbum = 'all'"
+          :class="['text-xs px-2.5 py-1 rounded-full border transition-colors',
+                   galleryAlbum === 'all' ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">Todas</button>
+        <button v-for="a in galleryAlbums" :key="a" type="button" @click="galleryAlbum = a"
+          :class="['text-xs px-2.5 py-1 rounded-full border transition-colors',
+                   galleryAlbum === a ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">{{ a }}</button>
+      </div>
       <Swiper
         :modules="galleryModules"
         :breakpoints="galleryBreakpoints"
@@ -223,7 +247,7 @@ const waLink = computed(() => {
         navigation
         :pagination="{ clickable: true }"
         class="ws-gallery rounded-xl">
-        <SwiperSlide v-for="(p, i) in provider.photos" :key="p.publicId || i" class="h-auto">
+        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="h-auto">
           <div @click="lightbox = p.url"
             class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
             <img :src="p.url" class="w-full h-full object-cover" />
