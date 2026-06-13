@@ -453,7 +453,10 @@ const downloadQr = async () => {
           </div>
 
           <template v-if="currentAlbum === WHATSAPP_ALBUM">
-            <p class="text-xs text-amber-600 mb-2">Máximo 5 fotos — son las que ve el cliente en el bot de WhatsApp.</p>
+            <div class="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+              <p class="text-xs text-amber-700 font-semibold">⭐ Estas son las fotos que muestra el bot de WhatsApp.</p>
+              <p class="text-xs text-amber-600 mt-0.5">Cuando un cliente te encuentra por WhatsApp, verá estas fotos (máximo 5). Elige tus mejores trabajos.</p>
+            </div>
             <button v-if="allPhotos.length" type="button" @click="pickerOpen = true"
               class="mb-3 text-xs px-3 py-1.5 rounded-lg border border-brand-green text-brand-green font-medium hover:bg-brand-green/5">
               🖼️ Elegir de mis fotos
