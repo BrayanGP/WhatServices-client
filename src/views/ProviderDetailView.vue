@@ -26,7 +26,7 @@ const reviews     = ref([])
 const submitting  = ref(false)
 const reviewError = ref('')
 const reviewOk    = ref(false)
-const lightbox    = ref(null) // URL de foto ampliada
+const lightboxIndex = ref(null) // índice de la foto ampliada (para el carrusel)
 
 // ── Galería por categoría/álbum ──────────────────────────────────────────────
 const galleryAlbum = ref('all')
@@ -143,11 +143,22 @@ const waLink = computed(() => {
 </script>
 
 <template>
-  <!-- Lightbox -->
+  <!-- Lightbox (carrusel deslizable) -->
   <Teleport to="body">
-    <div v-if="lightbox" @click="lightbox = null"
-      class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
-      <img :src="lightbox" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl object-contain" />
+    <div v-if="lightboxIndex !== null" @click.self="lightboxIndex = null"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      <button @click="lightboxIndex = null" aria-label="Cerrar"
+        class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/15 text-white text-2xl flex items-center justify-center hover:bg-white/25 leading-none">✕</button>
+      <Swiper
+        :modules="galleryModules"
+        :initial-slide="lightboxIndex"
+        navigation
+        :pagination="{ clickable: true }"
+        class="ws-lightbox w-full h-full">
+        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="flex items-center justify-center">
+          <img :src="p.url" @click.stop class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
+        </SwiperSlide>
+      </Swiper>
     </div>
   </Teleport>
 
@@ -248,7 +259,7 @@ const waLink = computed(() => {
         :pagination="{ clickable: true }"
         class="ws-gallery rounded-xl">
         <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="h-auto">
-          <div @click="lightbox = p.url"
+          <div @click="lightboxIndex = i"
             class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
             <img :src="p.url" class="w-full h-full object-cover" />
           </div>
@@ -368,5 +379,20 @@ const waLink = computed(() => {
 }
 .ws-gallery :deep(.swiper-pagination-bullet-active) {
   background: #16a34a;
+}
+
+/* Lightbox: carrusel a pantalla completa con flechas/bullets blancos */
+.ws-lightbox :deep(.swiper-button-next),
+.ws-lightbox :deep(.swiper-button-prev) {
+  color: #ffffff;
+  --swiper-navigation-size: 30px;
+}
+.ws-lightbox :deep(.swiper-pagination-bullet) {
+  background: #ffffff;
+  opacity: 0.5;
+}
+.ws-lightbox :deep(.swiper-pagination-bullet-active) {
+  background: #ffffff;
+  opacity: 1;
 }
 </style>
