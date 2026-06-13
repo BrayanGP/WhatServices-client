@@ -19,7 +19,7 @@ const logout = async () => {
   <nav class="bg-white border-b border-brand-dark/10 sticky top-0 z-10">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
 
-      <router-link to="/" class="flex items-center gap-3" @click="isOpen = false">
+      <router-link :to="auth.isLoggedIn ? '/providers' : '/'" class="flex items-center gap-3" @click="isOpen = false">
         <div class="h-10 w-10 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm ring-1 ring-brand-dark/10">
           <img :src="miLogo" alt="WhatServices" class="h-8 w-8 object-contain" />
         </div>
