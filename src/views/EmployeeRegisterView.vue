@@ -832,6 +832,10 @@ const uploadPhotos = async () => {
         <!-- Botones de acción -->
         <div class="flex gap-3 pt-1">
           <button
+            @click="step = 3; done = true"
+            class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors font-medium"
+          >Omitir</button>
+          <button
             @click="uploadPhotos"
             :disabled="uploading"
             class="flex-1 bg-brand-green text-white py-2.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-60"
@@ -840,12 +844,8 @@ const uploadPhotos = async () => {
             <span v-if="uploading" class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span> Subiendo...
             </span>
-            <span v-else>Subir fotos y finalizar</span>
+            <span v-else>Subir fotos</span>
           </button>
-          <button
-            @click="step = 3; done = true"
-            class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors"
-          >Omitir</button>
         </div>
       </div>
 
