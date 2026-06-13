@@ -42,6 +42,9 @@ const logout = async () => {
 
         <div class="flex items-center gap-4">
           <template v-if="auth.isLoggedIn">
+            <router-link to="/providers" class="text-brand-dark hover:text-brand-green text-sm font-semibold transition-colors">
+              Profesionales
+            </router-link>
             <span title="Créditos disponibles (suscripción)"
               class="inline-flex items-center gap-1 bg-brand-green/10 text-brand-green text-xs font-bold px-2.5 py-1 rounded-full">
               💳 Créditos: ∞
@@ -73,6 +76,9 @@ const logout = async () => {
           <span class="inline-flex items-center gap-1 bg-brand-green/10 text-brand-green text-xs font-bold px-2.5 py-1 rounded-full w-fit">
             💳 Créditos: ∞
           </span>
+          <router-link to="/providers" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
+            Profesionales
+          </router-link>
           <router-link to="/mi-perfil" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
             Mi perfil ({{ auth.user?.name }})
           </router-link>

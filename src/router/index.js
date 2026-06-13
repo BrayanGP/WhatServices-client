@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   { path: '/', component: () => import('../views/HomeView.vue') },
-  { path: '/providers', component: () => import('../views/ProviderListView.vue'), meta: { publicOnly: true } },
+  { path: '/providers', component: () => import('../views/ProviderListView.vue') },
   { path: '/providers/:id', component: () => import('../views/ProviderDetailView.vue') },
   { path: '/login', component: () => import('../views/LoginView.vue') },
   // El registro web es solo para profesionales
