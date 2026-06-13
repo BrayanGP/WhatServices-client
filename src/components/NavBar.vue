@@ -42,6 +42,13 @@ const logout = async () => {
 
         <div class="flex items-center gap-4">
           <template v-if="auth.isLoggedIn">
+            <router-link to="/providers" class="text-brand-dark hover:text-brand-green text-sm font-semibold transition-colors">
+              Profesionales
+            </router-link>
+            <span title="Créditos disponibles (suscripción)"
+              class="inline-flex items-center gap-1 bg-brand-green/10 text-brand-green text-xs font-bold px-2.5 py-1 rounded-full">
+              💳 Créditos: ∞
+            </span>
             <router-link to="/mi-perfil" class="text-brand-dark hover:text-brand-green text-sm font-semibold flex items-center gap-1 transition-colors">
               <svg class="w-5 h-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -66,6 +73,12 @@ const logout = async () => {
     <div v-if="isOpen" class="md:hidden bg-white border-t border-gray-100 px-4 py-4 flex flex-col gap-4 shadow-inner">
       <template v-if="auth.isLoggedIn">
         <div class="border-t border-gray-100 pt-3 flex flex-col gap-3">
+          <span class="inline-flex items-center gap-1 bg-brand-green/10 text-brand-green text-xs font-bold px-2.5 py-1 rounded-full w-fit">
+            💳 Créditos: ∞
+          </span>
+          <router-link to="/providers" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
+            Profesionales
+          </router-link>
           <router-link to="/mi-perfil" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
             Mi perfil ({{ auth.user?.name }})
           </router-link>

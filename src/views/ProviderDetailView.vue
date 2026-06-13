@@ -26,7 +26,28 @@ const reviews     = ref([])
 const submitting  = ref(false)
 const reviewError = ref('')
 const reviewOk    = ref(false)
-const lightbox    = ref(null) // URL de foto ampliada
+const lightboxIndex = ref(null) // índice de la foto ampliada (para el carrusel)
+
+// ── Galería por categoría/álbum ──────────────────────────────────────────────
+const galleryAlbum = ref('all')
+// Categorías propias que realmente tienen fotos (además de "Todas")
+const galleryAlbums = computed(() => {
+  const fromList = provider.value?.albums || []
+  const fromPhotos = (provider.value?.photos || []).flatMap((p) => p.albums || [])
+  const custom = [...new Set([...fromList, ...fromPhotos])].filter((a) => a && a !== 'default' && a !== 'WhatsApp')
+  return custom.filter((a) => (provider.value?.photos || []).some((p) => (p.albums || []).includes(a)))
+})
+const galleryPhotos = computed(() => {
+  const all = provider.value?.photos || []
+  if (galleryAlbum.value === 'all') return all
+  return all.filter((p) => (p.albums || []).includes(galleryAlbum.value))
+})
+// Al abrir el visor, Swiper a veces mide mal el ancho (modal recién mostrado): forzar update.
+const onLightboxSwiper = (s) => {
+  const fix = () => { try { s.update(); s.slideTo(lightboxIndex.value ?? 0, 0); } catch (e) {} }
+  requestAnimationFrame(fix)
+  setTimeout(fix, 80)
+}
 
 // ── deviceId: una reseña por dispositivo ─────────────────────────────────────
 const getDeviceId = () => {
@@ -128,11 +149,29 @@ const waLink = computed(() => {
 </script>
 
 <template>
-  <!-- Lightbox -->
+  <!-- Lightbox (carrusel deslizable) -->
   <Teleport to="body">
-    <div v-if="lightbox" @click="lightbox = null"
-      class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
-      <img :src="lightbox" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl object-contain" />
+    <div v-if="lightboxIndex !== null" @click.self="lightboxIndex = null"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      <button @click="lightboxIndex = null" aria-label="Cerrar"
+        class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/15 text-white text-2xl flex items-center justify-center hover:bg-white/25 leading-none">✕</button>
+      <Swiper
+        :modules="galleryModules"
+        :initial-slide="lightboxIndex"
+        :slides-per-view="1"
+        :centered-slides="true"
+        :space-between="0"
+        :observer="true"
+        :observe-parents="true"
+        :resize-observer="true"
+        navigation
+        :pagination="{ clickable: true }"
+        @swiper="onLightboxSwiper"
+        class="ws-lightbox w-full h-full">
+        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="!flex items-center justify-center">
+          <img :src="p.url" @click.stop class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
+        </SwiperSlide>
+      </Swiper>
     </div>
   </Teleport>
 
@@ -215,6 +254,15 @@ const waLink = computed(() => {
     <!-- ── Galería de fotos (carrusel) ── -->
     <div v-if="provider.photos?.length" class="bg-white rounded-2xl shadow-sm p-4">
       <h2 class="text-sm font-semibold text-gray-700 mb-3">Trabajos realizados</h2>
+      <!-- Filtro por categoría (solo si el proveedor tiene categorías propias con fotos) -->
+      <div v-if="galleryAlbums.length" class="flex flex-wrap gap-1.5 mb-3">
+        <button type="button" @click="galleryAlbum = 'all'"
+          :class="['text-xs px-2.5 py-1 rounded-full border transition-colors',
+                   galleryAlbum === 'all' ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">Todas</button>
+        <button v-for="a in galleryAlbums" :key="a" type="button" @click="galleryAlbum = a"
+          :class="['text-xs px-2.5 py-1 rounded-full border transition-colors',
+                   galleryAlbum === a ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">{{ a }}</button>
+      </div>
       <Swiper
         :modules="galleryModules"
         :breakpoints="galleryBreakpoints"
@@ -223,8 +271,8 @@ const waLink = computed(() => {
         navigation
         :pagination="{ clickable: true }"
         class="ws-gallery rounded-xl">
-        <SwiperSlide v-for="(p, i) in provider.photos" :key="p.publicId || i" class="h-auto">
-          <div @click="lightbox = p.url"
+        <SwiperSlide v-for="(p, i) in galleryPhotos" :key="p.publicId || i" class="h-auto">
+          <div @click="lightboxIndex = i"
             class="aspect-square rounded-xl overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity">
             <img :src="p.url" class="w-full h-full object-cover" />
           </div>
@@ -344,5 +392,24 @@ const waLink = computed(() => {
 }
 .ws-gallery :deep(.swiper-pagination-bullet-active) {
   background: #16a34a;
+}
+
+/* Lightbox: carrusel a pantalla completa con flechas/bullets blancos */
+.ws-lightbox :deep(.swiper-slide) {
+  width: 100%;
+  height: 100%;
+}
+.ws-lightbox :deep(.swiper-button-next),
+.ws-lightbox :deep(.swiper-button-prev) {
+  color: #ffffff;
+  --swiper-navigation-size: 30px;
+}
+.ws-lightbox :deep(.swiper-pagination-bullet) {
+  background: #ffffff;
+  opacity: 0.5;
+}
+.ws-lightbox :deep(.swiper-pagination-bullet-active) {
+  background: #ffffff;
+  opacity: 1;
 }
 </style>

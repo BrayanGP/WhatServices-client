@@ -103,15 +103,36 @@ const save = async () => {
   } finally { saving.value = false }
 }
 
-// ── Fotos (config tipo EmployeeRegisterView) ─────────────────────────────────
+// ── Fotos por álbum/categoría ────────────────────────────────────────────────
+const WHATSAPP_ALBUM = 'WhatsApp'
+const DEFAULT_ALBUM = 'default'
+const WHATSAPP_MAX = 5
+const MAX_TOTAL = 60
+
 const profileFile = ref(null)
 const profilePreview = ref(null)
 const newPhotos = ref([])
 const newPreviews = ref([])
 const uploadingPhotos = ref(false)
 const photoMsg = ref('')
+const currentAlbum = ref(WHATSAPP_ALBUM)
+const pickerOpen = ref(false)
 
-const roomLeft = computed(() => Math.max(0, 5 - (provider.value?.photos?.length || 0) - newPhotos.value.length))
+const allPhotos = computed(() => provider.value?.photos || [])
+const albumList = computed(() => [WHATSAPP_ALBUM, DEFAULT_ALBUM, ...((provider.value?.albums) || [])])
+const albumLabel = (a) => (a === WHATSAPP_ALBUM ? '⭐ WhatsApp' : a === DEFAULT_ALBUM ? '🗂️ Todas' : a)
+const inAlbum = (ph, a) => (ph.albums || [DEFAULT_ALBUM]).includes(a)
+const albumPhotos = computed(() => (provider.value?.photos || []).filter((p) => inAlbum(p, currentAlbum.value)))
+const waCount = computed(() => (provider.value?.photos || []).filter((p) => inAlbum(p, WHATSAPP_ALBUM)).length)
+
+const roomLeft = computed(() => {
+  if (currentAlbum.value === WHATSAPP_ALBUM) return Math.max(0, WHATSAPP_MAX - waCount.value - newPhotos.value.length)
+  return Math.max(0, MAX_TOTAL - (provider.value?.photos?.length || 0) - newPhotos.value.length)
+})
+
+const flashPhoto = (m) => { photoMsg.value = m; setTimeout(() => (photoMsg.value = ''), 2800) }
+
+const selectAlbum = (a) => { currentAlbum.value = a; newPhotos.value = []; newPreviews.value = [] }
 
 const onProfile = (e) => {
   const f = e.target.files[0] || null
@@ -139,16 +160,73 @@ const savePhotos = async () => {
       profileFile.value = null; profilePreview.value = null
     }
     if (newPhotos.value.length) {
-      const fd = new FormData(); newPhotos.value.forEach((f) => fd.append('photos', f))
+      const fd = new FormData()
+      newPhotos.value.forEach((f) => fd.append('photos', f))
+      fd.append('album', currentAlbum.value)
       const r = await auth.authFetch(`${API}/providers/${provider.value._id}/photos`, { method: 'POST', body: fd })
       if (!r.ok) throw new Error((await r.json()).message || 'Error al subir fotos')
-      provider.value.photos = (await r.json()).photos
+      const data = await r.json()
+      provider.value.photos = data.photos
+      if (data.albums) provider.value.albums = data.albums
       newPhotos.value = []; newPreviews.value = []
     }
-    photoMsg.value = '✅ Fotos actualizadas'
-    setTimeout(() => (photoMsg.value = ''), 2500)
+    flashPhoto('✅ Fotos actualizadas')
   } catch (e) { photoMsg.value = e.message || 'Error al subir' }
   finally { uploadingPhotos.value = false }
+}
+
+const deletePhoto = async (ph) => {
+  if (!confirm('¿Eliminar esta foto?')) return
+  try {
+    const r = await auth.authFetch(`${API}/providers/${provider.value._id}/photos`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicId: ph.publicId }),
+    })
+    if (!r.ok) throw new Error((await r.json()).message || 'Error')
+    provider.value.photos = (await r.json()).photos
+  } catch (e) { flashPhoto(e.message || 'Error al eliminar') }
+}
+
+// Mostrar/quitar una foto del álbum de WhatsApp (lo que ve el cliente en el bot)
+const toggleWhatsapp = async (ph) => {
+  const inWa = inAlbum(ph, WHATSAPP_ALBUM)
+  if (!inWa && waCount.value >= WHATSAPP_MAX) { flashPhoto(`El álbum de WhatsApp admite máximo ${WHATSAPP_MAX} fotos.`); return }
+  const albums = inWa
+    ? (ph.albums || []).filter((a) => a !== WHATSAPP_ALBUM)
+    : [...(ph.albums || []), WHATSAPP_ALBUM]
+  try {
+    const r = await auth.authFetch(`${API}/providers/${provider.value._id}/photos`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicId: ph.publicId, albums }),
+    })
+    if (!r.ok) throw new Error((await r.json()).message || 'Error')
+    provider.value.photos = (await r.json()).photos
+  } catch (e) { flashPhoto(e.message || 'Error') }
+}
+
+const createAlbum = async () => {
+  const name = prompt('Nombre de la nueva categoría (ej. Puertas, Closets, Cocinas):')
+  if (!name || !name.trim()) return
+  try {
+    const r = await auth.authFetch(`${API}/providers/${provider.value._id}/albums`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }),
+    })
+    if (!r.ok) throw new Error((await r.json()).message || 'Error')
+    provider.value.albums = (await r.json()).albums
+    currentAlbum.value = name.trim()
+  } catch (e) { flashPhoto(e.message || 'Error al crear') }
+}
+
+const deleteAlbum = async (a) => {
+  if (a === WHATSAPP_ALBUM || a === DEFAULT_ALBUM) return
+  if (!confirm(`¿Eliminar la categoría "${a}"? Las fotos quedan en "Todas".`)) return
+  try {
+    const r = await auth.authFetch(`${API}/providers/${provider.value._id}/albums`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: a }),
+    })
+    if (!r.ok) throw new Error((await r.json()).message || 'Error')
+    const d = await r.json()
+    provider.value.photos = d.photos; provider.value.albums = d.albums
+    currentAlbum.value = DEFAULT_ALBUM
+  } catch (e) { flashPhoto(e.message || 'Error al eliminar') }
 }
 
 // QR generado en el frontend con qrserver.com (sin headers, funciona como <img src>)
@@ -179,6 +257,32 @@ const downloadQr = async () => {
     <div v-if="lightbox" @click="lightbox = null"
       class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
       <img :src="lightbox" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl object-contain" />
+    </div>
+  </Teleport>
+
+  <!-- Selector de fotos para WhatsApp (elegir entre las ya subidas) -->
+  <Teleport to="body">
+    <div v-if="pickerOpen" @click.self="pickerOpen = false"
+      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[82vh] overflow-y-auto p-5">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="font-bold text-gray-800">Elige las fotos para WhatsApp</h3>
+          <span class="text-xs font-semibold" :class="waCount >= WHATSAPP_MAX ? 'text-amber-600' : 'text-gray-400'">⭐ {{ waCount }}/{{ WHATSAPP_MAX }}</span>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">Toca una foto para mostrarla u ocultarla en WhatsApp (máx {{ WHATSAPP_MAX }}).</p>
+        <div class="grid grid-cols-3 gap-2">
+          <div v-for="(ph, i) in allPhotos" :key="ph.publicId || i" @click="toggleWhatsapp(ph)"
+            class="relative aspect-square rounded-lg overflow-hidden cursor-pointer ring-2 transition-all"
+            :class="inAlbum(ph, WHATSAPP_ALBUM) ? 'ring-amber-400' : 'ring-transparent hover:ring-gray-200'">
+            <img :src="ph.url" class="w-full h-full object-cover"
+              :class="(!inAlbum(ph, WHATSAPP_ALBUM) && waCount >= WHATSAPP_MAX) ? 'opacity-40' : ''" />
+            <div v-if="inAlbum(ph, WHATSAPP_ALBUM)" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-amber-400 text-white text-sm flex items-center justify-center shadow">⭐</div>
+          </div>
+        </div>
+        <p v-if="!allPhotos.length" class="text-sm text-gray-400 text-center py-6">Aún no tienes fotos. Súbelas en "Todas" o en una categoría.</p>
+        <button @click="pickerOpen = false"
+          class="mt-5 w-full bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen">Listo</button>
+      </div>
     </div>
   </Teleport>
 
@@ -328,19 +432,50 @@ const downloadQr = async () => {
           </div>
         </div>
 
-        <!-- Fotos de trabajos -->
+        <!-- Fotos de trabajos por categoría/álbum -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <p class="text-sm font-semibold text-gray-700">Fotos de tus trabajos</p>
-            <span class="text-xs text-gray-400">{{ (provider.photos?.length || 0) + newPhotos.length }}/5</span>
+            <span class="text-xs" :class="waCount >= WHATSAPP_MAX ? 'text-amber-600' : 'text-gray-400'">⭐ WhatsApp: {{ waCount }}/{{ WHATSAPP_MAX }}</span>
           </div>
 
+          <!-- Pestañas de álbumes -->
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            <button v-for="a in albumList" :key="a" type="button" @click="selectAlbum(a)"
+              :class="['text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors',
+                       currentAlbum === a ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">
+              <span>{{ albumLabel(a) }}</span>
+              <span v-if="a !== WHATSAPP_ALBUM && a !== DEFAULT_ALBUM" @click.stop="deleteAlbum(a)"
+                class="opacity-60 hover:opacity-100 hover:text-red-200">✕</span>
+            </button>
+            <button type="button" @click="createAlbum"
+              class="text-xs px-2.5 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-brand-green hover:text-brand-green">➕ Categoría</button>
+          </div>
+
+          <template v-if="currentAlbum === WHATSAPP_ALBUM">
+            <div class="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+              <p class="text-xs text-amber-700 font-semibold">⭐ Estas son las fotos que muestra el bot de WhatsApp.</p>
+              <p class="text-xs text-amber-600 mt-0.5">Cuando un cliente te encuentra por WhatsApp, verá estas fotos (máximo 5). Elige tus mejores trabajos.</p>
+            </div>
+            <button v-if="allPhotos.length" type="button" @click="pickerOpen = true"
+              class="mb-3 text-xs px-3 py-1.5 rounded-lg border border-brand-green text-brand-green font-medium hover:bg-brand-green/5">
+              🖼️ Elegir de mis fotos
+            </button>
+          </template>
+          <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-xs text-gray-400 mb-2">Todas tus fotos. Puedes subir las que quieras.</p>
+          <p v-else class="text-xs text-gray-400 mb-2">Categoría propia. Sube las fotos que quieras.</p>
+
           <div class="grid grid-cols-3 gap-2 mb-2">
-            <!-- Existentes (servidor) -->
-            <div v-for="(ph, i) in provider.photos" :key="ph.publicId || i"
-              @click="lightbox = ph.url"
-              class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90">
-              <img :src="ph.url" class="w-full h-full object-cover" />
+            <!-- Existentes del álbum -->
+            <div v-for="(ph, i) in albumPhotos" :key="ph.publicId || i"
+              class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+              <img :src="ph.url" @click="lightbox = ph.url" class="w-full h-full object-cover cursor-zoom-in hover:opacity-90" />
+              <button type="button" @click="deletePhoto(ph)"
+                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none">✕</button>
+              <button type="button" @click="toggleWhatsapp(ph)"
+                :title="inAlbum(ph, WHATSAPP_ALBUM) ? 'Quitar de WhatsApp' : 'Mostrar en WhatsApp'"
+                :class="['absolute bottom-1 left-1 w-6 h-6 rounded-full text-sm flex items-center justify-center leading-none',
+                         inAlbum(ph, WHATSAPP_ALBUM) ? 'bg-amber-400 text-white' : 'bg-black/40 text-white hover:bg-black/60']">⭐</button>
             </div>
             <!-- Nuevas (preview, sin subir) -->
             <div v-for="(src, i) in newPreviews" :key="'new' + i" class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 ring-2 ring-brand-green/40">
@@ -355,7 +490,7 @@ const downloadQr = async () => {
               <input type="file" accept="image/*" multiple @change="onWorks" class="hidden" />
             </label>
           </div>
-          <p class="text-xs text-gray-400">Máximo 5 fotos. Toca una existente para ampliarla.</p>
+          <p class="text-xs text-gray-400">⭐ marca si la foto se muestra en WhatsApp (máx 5). Toca una foto para ampliarla.</p>
         </div>
 
         <div class="flex items-center gap-3">
