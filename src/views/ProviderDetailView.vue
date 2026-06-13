@@ -27,6 +27,7 @@ const submitting  = ref(false)
 const reviewError = ref('')
 const reviewOk    = ref(false)
 const lightboxIndex = ref(null) // índice de la foto ampliada (para el carrusel)
+const profileLightbox = ref(false)
 
 // ── Galería por categoría/álbum ──────────────────────────────────────────────
 const galleryAlbum = ref('all')
@@ -149,6 +150,17 @@ const waLink = computed(() => {
 </script>
 
 <template>
+  <!-- Lightbox foto de perfil -->
+  <Teleport to="body">
+    <div v-if="profileLightbox" @click="profileLightbox = false"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      <button @click="profileLightbox = false" aria-label="Cerrar"
+        class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/15 text-white text-2xl flex items-center justify-center hover:bg-white/25 leading-none">✕</button>
+      <img :src="provider.profilePhoto.url" @click.stop
+        class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
+    </div>
+  </Teleport>
+
   <!-- Lightbox (carrusel deslizable) -->
   <Teleport to="body">
     <div v-if="lightboxIndex !== null" @click.self="lightboxIndex = null"
@@ -195,7 +207,8 @@ const waLink = computed(() => {
       <div class="h-24 bg-gradient-to-br from-brand-green to-brand-dark relative">
         <div class="absolute -bottom-8 left-6">
           <div v-if="provider.profilePhoto?.url && provider.profilePhoto.url !== ''"
-            class="w-16 h-16 rounded-full ring-4 ring-white overflow-hidden shadow">
+            class="w-16 h-16 rounded-full ring-4 ring-white overflow-hidden shadow cursor-zoom-in"
+            @click="profileLightbox = true">
             <img :src="provider.profilePhoto.url" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
           </div>
           <div v-else
