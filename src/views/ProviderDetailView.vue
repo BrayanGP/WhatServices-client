@@ -194,9 +194,9 @@ const waLink = computed(() => {
       <!-- Banner verde superior -->
       <div class="h-24 bg-gradient-to-br from-brand-green to-brand-dark relative">
         <div class="absolute -bottom-8 left-6">
-          <div v-if="provider.profilePhoto?.url"
+          <div v-if="provider.profilePhoto?.url && provider.profilePhoto.url !== ''"
             class="w-16 h-16 rounded-full ring-4 ring-white overflow-hidden shadow">
-            <img :src="provider.profilePhoto.url" class="w-full h-full object-cover" />
+            <img :src="provider.profilePhoto.url" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
           </div>
           <div v-else
             class="w-16 h-16 rounded-full ring-4 ring-white bg-brand-green/20 flex items-center justify-center text-2xl font-bold text-white shadow">
