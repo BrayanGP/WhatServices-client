@@ -116,7 +116,9 @@ const newPreviews = ref([])
 const uploadingPhotos = ref(false)
 const photoMsg = ref('')
 const currentAlbum = ref(WHATSAPP_ALBUM)
+const pickerOpen = ref(false)
 
+const allPhotos = computed(() => provider.value?.photos || [])
 const albumList = computed(() => [WHATSAPP_ALBUM, DEFAULT_ALBUM, ...((provider.value?.albums) || [])])
 const albumLabel = (a) => (a === WHATSAPP_ALBUM ? '⭐ WhatsApp' : a === DEFAULT_ALBUM ? '🗂️ Todas' : a)
 const inAlbum = (ph, a) => (ph.albums || [DEFAULT_ALBUM]).includes(a)
@@ -255,6 +257,32 @@ const downloadQr = async () => {
     <div v-if="lightbox" @click="lightbox = null"
       class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
       <img :src="lightbox" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl object-contain" />
+    </div>
+  </Teleport>
+
+  <!-- Selector de fotos para WhatsApp (elegir entre las ya subidas) -->
+  <Teleport to="body">
+    <div v-if="pickerOpen" @click.self="pickerOpen = false"
+      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[82vh] overflow-y-auto p-5">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="font-bold text-gray-800">Elige las fotos para WhatsApp</h3>
+          <span class="text-xs font-semibold" :class="waCount >= WHATSAPP_MAX ? 'text-amber-600' : 'text-gray-400'">⭐ {{ waCount }}/{{ WHATSAPP_MAX }}</span>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">Toca una foto para mostrarla u ocultarla en WhatsApp (máx {{ WHATSAPP_MAX }}).</p>
+        <div class="grid grid-cols-3 gap-2">
+          <div v-for="(ph, i) in allPhotos" :key="ph.publicId || i" @click="toggleWhatsapp(ph)"
+            class="relative aspect-square rounded-lg overflow-hidden cursor-pointer ring-2 transition-all"
+            :class="inAlbum(ph, WHATSAPP_ALBUM) ? 'ring-amber-400' : 'ring-transparent hover:ring-gray-200'">
+            <img :src="ph.url" class="w-full h-full object-cover"
+              :class="(!inAlbum(ph, WHATSAPP_ALBUM) && waCount >= WHATSAPP_MAX) ? 'opacity-40' : ''" />
+            <div v-if="inAlbum(ph, WHATSAPP_ALBUM)" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-amber-400 text-white text-sm flex items-center justify-center shadow">⭐</div>
+          </div>
+        </div>
+        <p v-if="!allPhotos.length" class="text-sm text-gray-400 text-center py-6">Aún no tienes fotos. Súbelas en "Todas" o en una categoría.</p>
+        <button @click="pickerOpen = false"
+          class="mt-5 w-full bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen">Listo</button>
+      </div>
     </div>
   </Teleport>
 
@@ -424,7 +452,13 @@ const downloadQr = async () => {
               class="text-xs px-2.5 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-brand-green hover:text-brand-green">➕ Categoría</button>
           </div>
 
-          <p v-if="currentAlbum === WHATSAPP_ALBUM" class="text-xs text-amber-600 mb-2">Máximo 5 fotos — son las que ve el cliente en el bot de WhatsApp.</p>
+          <template v-if="currentAlbum === WHATSAPP_ALBUM">
+            <p class="text-xs text-amber-600 mb-2">Máximo 5 fotos — son las que ve el cliente en el bot de WhatsApp.</p>
+            <button v-if="allPhotos.length" type="button" @click="pickerOpen = true"
+              class="mb-3 text-xs px-3 py-1.5 rounded-lg border border-brand-green text-brand-green font-medium hover:bg-brand-green/5">
+              🖼️ Elegir de mis fotos
+            </button>
+          </template>
           <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-xs text-gray-400 mb-2">Todas tus fotos. Puedes subir las que quieras.</p>
           <p v-else class="text-xs text-gray-400 mb-2">Categoría propia. Sube las fotos que quieras.</p>
 
