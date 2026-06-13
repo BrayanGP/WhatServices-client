@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { track } from '../lib/analytics'
@@ -160,7 +160,11 @@ const verifyOtp = async () => {
   } catch (e) { otpError.value = e.message } finally { otpLoading.value = false }
 }
 
-onUnmounted(() => { clearInterval(blockTimer); clearInterval(codeTimer) })
+onUnmounted(() => {
+  clearInterval(blockTimer)
+  clearInterval(codeTimer)
+  document.removeEventListener('click', onClickOutsideCat)
+})
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 const touched = ref({})
@@ -201,12 +205,18 @@ const onPhoneInput = () => {
 // ── Dropdown de categorías ────────────────────────────────────────────────────
 const catDropdownOpen = ref(false)
 const catSearch = ref('')
+const catDropdownRef = ref(null)
 const filteredCategories = computed(() =>
   categories.value.filter(c => c.name.toLowerCase().includes(catSearch.value.toLowerCase()))
 )
 const toggleCatDropdown = () => {
   catDropdownOpen.value = !catDropdownOpen.value
   if (catDropdownOpen.value) catSearch.value = ''
+}
+const onClickOutsideCat = (e) => {
+  if (catDropdownRef.value && !catDropdownRef.value.contains(e.target)) {
+    catDropdownOpen.value = false
+  }
 }
 const selectCat = (name) => {
   const i = form.value.categories.indexOf(name)
@@ -278,6 +288,7 @@ const loadLegalDocs = async () => {
 
 onMounted(async () => {
   track('unete_view')
+  document.addEventListener('click', onClickOutsideCat)
   loadLegalDocs()
   try {
     const res = await fetch(`${API}/categories`)
@@ -637,7 +648,7 @@ const uploadPhotos = async () => {
               class="inline-flex items-center gap-1 text-xs bg-brand-green text-white px-2 py-1 rounded-full"
             >{{ cat }}<button type="button" @click="removeCat(cat)" class="hover:opacity-70 leading-none">✕</button></span>
           </div>
-          <div class="relative">
+          <div class="relative" ref="catDropdownRef">
             <button type="button" @click="toggleCatDropdown"
               class="w-full border rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-brand-green bg-white"
               :class="catDropdownOpen ? 'ring-2 ring-brand-green border-brand-green' : 'border-gray-300'"
