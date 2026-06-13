@@ -360,6 +360,16 @@ const captureLocation = () => {
   )
 }
 
+// ── Regresar al paso OTP ─────────────────────────────────────────────────────
+const goBackToOtp = () => {
+  otpSent.value = false
+  otpCode.value = ''
+  otpError.value = ''
+  form.value.name = ''
+  form.value.phone = ''
+  step.value = 'otp'
+}
+
 // ── Submit ────────────────────────────────────────────────────────────────────
 const submit = async () => {
   // Marcar todos como tocados para mostrar errores
@@ -516,6 +526,15 @@ const uploadPhotos = async () => {
 
       <!-- ── Paso 1 ── -->
       <div v-else-if="step === 1" class="space-y-3">
+
+        <!-- Botón regresar al paso OTP -->
+        <button type="button" @click="goBackToOtp"
+          class="flex items-center gap-1 text-sm text-gray-500 hover:text-brand-green transition-colors -mt-1 mb-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Editar nombre y teléfono
+        </button>
 
         <!-- Nombre (pre-llenado desde OTP, no editable) -->
         <div class="flex items-center gap-2 border border-green-300 bg-green-50 rounded-lg px-3 py-2 text-sm">
