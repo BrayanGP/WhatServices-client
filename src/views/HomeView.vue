@@ -29,18 +29,18 @@ onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
 
     <!-- Vista PÚBLICA / cliente -->
     <template v-else>
-      <section class="bg-gradient-to-br from-brand-green to-brand-dark text-white py-20 px-4 text-center">
-        <h1 class="text-4xl font-bold mb-3">Encuentra servicios locales</h1>
-        <p class="text-brand-lightGreen/90 mb-8 text-lg">Carpinteros, plomeros, electricistas y más en tu ciudad</p>
+      <section class="bg-gradient-to-br from-brand-green to-brand-dark text-white py-4 md:py-20 px-4 text-center">
+        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-3">Encuentra servicios locales</h1>
+        <p class="text-brand-lightGreen/90 mb-4 md:mb-8 text-sm md:text-lg">Carpinteros, plomeros, electricistas y más en tu ciudad</p>
 
         <div class="flex justify-center">
           <router-link to="/providers"
-            class="bg-brand-lightGreen text-brand-dark font-bold text-xl px-10 py-4 rounded-xl hover:bg-white hover:text-brand-green transition-all duration-200 shadow-lg">
+            class="bg-brand-lightGreen text-brand-dark font-bold text-base md:text-xl px-7 py-2.5 md:px-10 md:py-4 rounded-xl hover:bg-white hover:text-brand-green transition-all duration-200 shadow-lg">
             Buscar servicios
           </router-link>
         </div>
 
-        <router-link to="/unete" class="inline-block mt-6 text-brand-lightGreen underline hover:text-white text-sm">
+        <router-link to="/unete" class="inline-block mt-3 md:mt-6 text-brand-lightGreen underline hover:text-white text-sm">
           ¿Eres profesional? Únete y recibe clientes →
         </router-link>
       </section>

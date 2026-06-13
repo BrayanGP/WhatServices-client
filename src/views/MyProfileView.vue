@@ -18,6 +18,7 @@ const lightbox = ref(null)
 // ── Modal de edición ──────────────────────────────────────────────────────────
 const editModal = ref(false)
 const draft = ref({})
+const editError = ref('')
 
 const openEdit = () => {
   draft.value = {
@@ -27,8 +28,9 @@ const openEdit = () => {
     postalCode:   provider.value.postalCode   || '',
     categories:   [...(provider.value.categories || [])],
     availability: provider.value.availability || 'available',
-    email:        auth.user?.email            || '',
+    email:        provider.value.email        || auth.user?.email || '',
   }
+  editError.value = ''
   editModal.value = true
 }
 
@@ -87,7 +89,7 @@ const avgStars = computed(() => {
 })
 
 const save = async () => {
-  saving.value = true; msg.value = ''
+  saving.value = true; msg.value = ''; editError.value = ''
   try {
     const { businessName, description, city, postalCode, categories: cats, availability, email } = draft.value
     const res = await auth.authFetch(`${API}/providers/${provider.value._id}`, {
@@ -95,16 +97,16 @@ const save = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability, email }),
     })
-    if (res.ok) auth.user = { ...auth.user, email: email?.trim() || null }
     if (res.ok) {
+      auth.user = { ...auth.user, email: email?.trim() || null }
       provider.value = await res.json()
       editModal.value = false
       msg.value = '✅ Información actualizada'
+      setTimeout(() => (msg.value = ''), 3000)
     } else {
       const err = await res.json().catch(() => ({}))
-      msg.value = err.message || 'Error al guardar'
+      editError.value = err.message || 'Error al guardar'
     }
-    setTimeout(() => (msg.value = ''), 3000)
   } finally { saving.value = false }
 }
 
@@ -405,6 +407,9 @@ const downloadQr = async () => {
             </div>
 
             <!-- Footer -->
+            <div v-if="editError" class="px-6 pb-2">
+              <p class="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ editError }}</p>
+            </div>
             <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
               <button @click="save" :disabled="saving || !canSave"
                 class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
