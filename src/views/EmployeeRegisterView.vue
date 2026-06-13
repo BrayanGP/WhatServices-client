@@ -685,10 +685,10 @@ const uploadPhotos = async () => {
         </div>
 
         <!-- Ubicación -->
-        <div class="space-y-3">
+        <!-- <div class="space-y-3">
           <p class="text-sm font-medium text-gray-700">Ubicación *</p>
 
-          <!-- Switch de modo -->
+      
           <div class="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl">
             <button
               type="button"
@@ -712,7 +712,6 @@ const uploadPhotos = async () => {
             </button>
           </div>
 
-          <!-- Panel: dirección manual -->
           <div v-if="locMode === 'address'" class="relative">
             <input
               v-model="form.address"
@@ -740,7 +739,6 @@ const uploadPhotos = async () => {
             <p v-if="fieldError('address')" class="text-xs text-red-500 mt-1">{{ fieldError('address') }}</p>
           </div>
 
-          <!-- Panel: GPS -->
           <div v-else class="space-y-2">
             <button
               type="button"
@@ -765,6 +763,7 @@ const uploadPhotos = async () => {
             <p v-if="fieldError('address') && touched.address" class="text-xs text-red-500">{{ fieldError('address') }}</p>
           </div>
         </div>
+       -->
 
         <!-- Aceptación obligatoria de Términos y Aviso de Privacidad -->
         <div class="pt-1">
