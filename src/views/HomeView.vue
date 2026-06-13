@@ -29,7 +29,7 @@ onMounted(() => { if (!auth.isLoggedIn) store.fetchProviders({ limit: 6 }) })
 
     <!-- Vista PÚBLICA / cliente -->
     <template v-else>
-      <section class="bg-gradient-to-br from-brand-green to-brand-dark text-white py-20 px-4 text-center">
+      <section class="bg-gradient-to-br from-brand-green to-brand-dark text-white py-8 md:py-20 px-4 text-center">
         <h1 class="text-4xl font-bold mb-3">Encuentra servicios locales</h1>
         <p class="text-brand-lightGreen/90 mb-8 text-lg">Carpinteros, plomeros, electricistas y más en tu ciudad</p>
 
