@@ -110,6 +110,42 @@ const save = async () => {
   } finally { saving.value = false }
 }
 
+// ── Cambiar contraseña ───────────────────────────────────────────────────────
+const pwModal = ref(false)
+const pwCurrent = ref('')
+const pwNew = ref('')
+const pwNew2 = ref('')
+const pwShow = ref(false)
+const pwSaving = ref(false)
+const pwError = ref('')
+const pwOk = ref('')
+
+const openPasswordModal = () => {
+  editModal.value = false // cierra el de editar perfil
+  pwCurrent.value = ''; pwNew.value = ''; pwNew2.value = ''
+  pwError.value = ''; pwOk.value = ''
+  pwModal.value = true
+}
+
+const changePassword = async () => {
+  pwError.value = ''; pwOk.value = ''
+  if (!pwCurrent.value) { pwError.value = 'Ingresa tu contraseña actual'; return }
+  if (pwNew.value.length < 6) { pwError.value = 'La nueva contraseña debe tener al menos 6 caracteres'; return }
+  if (pwNew.value !== pwNew2.value) { pwError.value = 'Las contraseñas nuevas no coinciden'; return }
+  pwSaving.value = true
+  try {
+    const res = await auth.authFetch(`${API}/auth/password`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: pwCurrent.value, newPassword: pwNew.value }),
+    })
+    if (!res.ok) throw new Error((await res.json()).message || 'No se pudo actualizar')
+    pwOk.value = '✅ Contraseña actualizada'
+    pwCurrent.value = ''; pwNew.value = ''; pwNew2.value = ''
+    setTimeout(() => { pwModal.value = false; pwOk.value = '' }, 1500)
+  } catch (e) { pwError.value = e.message || 'Error al actualizar' }
+  finally { pwSaving.value = false }
+}
+
 // ── Fotos por álbum/categoría ────────────────────────────────────────────────
 const WHATSAPP_ALBUM = 'WhatsApp'
 const DEFAULT_ALBUM = 'default'
@@ -410,12 +446,57 @@ const downloadQr = async () => {
             <div v-if="editError" class="px-6 pb-2">
               <p class="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ editError }}</p>
             </div>
+            <div class="px-6 pt-3">
+              <button @click="openPasswordModal" type="button"
+                class="text-sm text-brand-green font-medium hover:underline flex items-center gap-1">
+                🔒 Actualizar contraseña
+              </button>
+            </div>
             <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
               <button @click="save" :disabled="saving || !canSave"
                 class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {{ saving ? 'Guardando...' : 'Guardar cambios' }}
               </button>
               <button @click="editModal = false"
+                class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:border-gray-300 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- ── Modal: actualizar contraseña ── -->
+      <Teleport to="body">
+        <div v-if="pwModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" @click.self="pwModal = false">
+          <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-base font-bold text-gray-800">Actualizar contraseña</h2>
+              <button @click="pwModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+
+            <div v-if="pwError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded mb-3">{{ pwError }}</div>
+            <div v-if="pwOk" class="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded mb-3">{{ pwOk }}</div>
+
+            <div class="space-y-3">
+              <div class="relative">
+                <input v-model="pwCurrent" :type="pwShow ? 'text' : 'password'" placeholder="Contraseña actual"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+                <button type="button" @click="pwShow = !pwShow" tabindex="-1"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">{{ pwShow ? '🙈' : '👁️' }}</button>
+              </div>
+              <input v-model="pwNew" :type="pwShow ? 'text' : 'password'" placeholder="Nueva contraseña (mín. 6)"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+              <input v-model="pwNew2" :type="pwShow ? 'text' : 'password'" placeholder="Confirmar nueva contraseña" @keyup.enter="changePassword"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+
+            <div class="flex items-center gap-3 mt-4">
+              <button @click="changePassword" :disabled="pwSaving"
+                class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors">
+                {{ pwSaving ? 'Guardando...' : 'Cambiar contraseña' }}
+              </button>
+              <button @click="pwModal = false"
                 class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:border-gray-300 transition-colors">
                 Cancelar
               </button>
