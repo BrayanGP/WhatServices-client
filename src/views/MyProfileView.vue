@@ -306,13 +306,13 @@ const downloadQr = async () => {
   <!-- Selector de fotos para WhatsApp (elegir entre las ya subidas) -->
   <Teleport to="body">
     <div v-if="pickerOpen" @click.self="pickerOpen = false"
-      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[82vh] overflow-y-auto p-5">
+      class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[88vh] sm:max-h-[82vh] overflow-y-auto p-5">
         <div class="flex items-center justify-between mb-1">
           <h3 class="font-bold text-gray-800">Elige las fotos para WhatsApp</h3>
-          <span class="text-xs font-semibold" :class="waCount >= WHATSAPP_MAX ? 'text-amber-600' : 'text-gray-400'">⭐ {{ waCount }}/{{ WHATSAPP_MAX }}</span>
+          <span class="text-sm font-semibold" :class="waCount >= WHATSAPP_MAX ? 'text-amber-600' : 'text-gray-400'">⭐ {{ waCount }}/{{ WHATSAPP_MAX }}</span>
         </div>
-        <p class="text-xs text-gray-500 mb-4">Toca una foto para mostrarla u ocultarla en WhatsApp (máx {{ WHATSAPP_MAX }}).</p>
+        <p class="text-sm text-gray-500 mb-4">Toca una foto para mostrarla u ocultarla en WhatsApp (máx {{ WHATSAPP_MAX }}).</p>
         <div class="grid grid-cols-3 gap-2">
           <div v-for="(ph, i) in allPhotos" :key="ph.publicId || i" @click="toggleWhatsapp(ph)"
             class="relative aspect-square rounded-lg overflow-hidden cursor-pointer ring-2 transition-all"
@@ -377,8 +377,8 @@ const downloadQr = async () => {
 
       <!-- ── Modal editar información ── -->
       <Teleport to="body">
-        <div v-if="editModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div v-if="editModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4 py-0 sm:py-6" @click.self="editModal = false">
+          <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col">
 
             <!-- Header -->
             <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
@@ -468,8 +468,8 @@ const downloadQr = async () => {
 
       <!-- ── Modal: actualizar contraseña ── -->
       <Teleport to="body">
-        <div v-if="pwModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" @click.self="pwModal = false">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div v-if="pwModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" @click.self="pwModal = false">
+          <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm p-6">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-base font-bold text-gray-800">Actualizar contraseña</h2>
               <button @click="pwModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
@@ -537,30 +537,30 @@ const downloadQr = async () => {
           </div>
 
           <!-- Pestañas de álbumes -->
-          <div class="flex flex-wrap gap-1.5 mb-3">
+          <div class="flex flex-wrap gap-2 mb-3">
             <button v-for="a in albumList" :key="a" type="button" @click="selectAlbum(a)"
-              :class="['text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors',
+              :class="['text-sm px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-colors',
                        currentAlbum === a ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50']">
               <span>{{ albumLabel(a) }}</span>
               <span v-if="a !== WHATSAPP_ALBUM && a !== DEFAULT_ALBUM" @click.stop="deleteAlbum(a)"
-                class="opacity-60 hover:opacity-100 hover:text-red-200">✕</span>
+                class="opacity-60 hover:opacity-100 hover:text-red-200 text-base leading-none">✕</span>
             </button>
             <button type="button" @click="createAlbum"
-              class="text-xs px-2.5 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-brand-green hover:text-brand-green">➕ Categoría</button>
+              class="text-sm px-3 py-1.5 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-brand-green hover:text-brand-green">➕ Categoría</button>
           </div>
 
           <template v-if="currentAlbum === WHATSAPP_ALBUM">
             <div class="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-              <p class="text-xs text-amber-700 font-semibold">⭐ Estas son las fotos que muestra el bot de WhatsApp.</p>
-              <p class="text-xs text-amber-600 mt-0.5">Cuando un cliente te encuentra por WhatsApp, verá estas fotos (máximo 5). Elige tus mejores trabajos.</p>
+              <p class="text-sm text-amber-700 font-semibold">⭐ Estas son las fotos que muestra el bot de WhatsApp.</p>
+              <p class="text-sm text-amber-600 mt-0.5">Cuando un cliente te encuentra por WhatsApp, verá estas fotos (máximo 5). Elige tus mejores trabajos.</p>
             </div>
             <button v-if="allPhotos.length" type="button" @click="pickerOpen = true"
-              class="mb-3 text-xs px-3 py-1.5 rounded-lg border border-brand-green text-brand-green font-medium hover:bg-brand-green/5">
+              class="mb-3 text-sm px-3 py-2 rounded-lg border border-brand-green text-brand-green font-medium hover:bg-brand-green/5">
               🖼️ Elegir de mis fotos
             </button>
           </template>
-          <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-xs text-gray-400 mb-2">Todas tus fotos. Puedes subir las que quieras.</p>
-          <p v-else class="text-xs text-gray-400 mb-2">Categoría propia. Sube las fotos que quieras.</p>
+          <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-sm text-gray-500 mb-2">Todas tus fotos. Puedes subir las que quieras.</p>
+          <p v-else class="text-sm text-gray-500 mb-2">Categoría propia. Sube las fotos que quieras.</p>
 
           <div class="grid grid-cols-3 gap-2 mb-2">
             <!-- Existentes del álbum -->
@@ -568,17 +568,17 @@ const downloadQr = async () => {
               class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
               <img :src="ph.url" @click="lightbox = ph.url" class="w-full h-full object-cover cursor-zoom-in hover:opacity-90" />
               <button type="button" @click="deletePhoto(ph)"
-                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none">✕</button>
+                class="absolute top-1 right-1 w-8 h-8 rounded-full bg-red-500 text-white text-sm flex items-center justify-center hover:bg-red-600 leading-none shadow">✕</button>
               <button type="button" @click="toggleWhatsapp(ph)"
                 :title="inAlbum(ph, WHATSAPP_ALBUM) ? 'Quitar de WhatsApp' : 'Mostrar en WhatsApp'"
-                :class="['absolute bottom-1 left-1 w-6 h-6 rounded-full text-sm flex items-center justify-center leading-none',
+                :class="['absolute bottom-1 left-1 w-8 h-8 rounded-full text-base flex items-center justify-center leading-none shadow',
                          inAlbum(ph, WHATSAPP_ALBUM) ? 'bg-amber-400 text-white' : 'bg-black/40 text-white hover:bg-black/60']">⭐</button>
             </div>
             <!-- Nuevas (preview, sin subir) -->
             <div v-for="(src, i) in newPreviews" :key="'new' + i" class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 ring-2 ring-brand-green/40">
               <img :src="src" class="w-full h-full object-cover" />
               <button type="button" @click="removeNew(i)"
-                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none">✕</button>
+                class="absolute top-1 right-1 w-8 h-8 rounded-full bg-red-500 text-white text-sm flex items-center justify-center hover:bg-red-600 leading-none shadow">✕</button>
             </div>
             <!-- Slot agregar -->
             <label v-if="roomLeft > 0" class="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">

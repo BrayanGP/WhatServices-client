@@ -186,8 +186,8 @@ const doReset = async () => {
 
   <!-- Modal: restablecer contraseña -->
   <Teleport to="body">
-    <div v-if="showReset" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" @click.self="closeReset">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+    <div v-if="showReset" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" @click.self="closeReset">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm p-6 max-h-[92vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-1">
           <h2 class="text-lg font-bold text-gray-800">Restablecer contraseña</h2>
           <button @click="closeReset" class="text-gray-400 hover:text-gray-600">✕</button>
