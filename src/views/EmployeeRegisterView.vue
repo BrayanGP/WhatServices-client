@@ -489,7 +489,7 @@ const uploadPhotos = async () => {
 
       <!-- ── Paso 0: verificación por OTP ── -->
       <div v-if="step === 'otp'" class="space-y-3">
-        <p v-if="OTP_ENABLED" class="text-sm text-gray-600 -mt-2">Primero verifica tu teléfono. Te enviaremos un código por WhatsApp. 📲</p>
+        <p v-if="OTP_ENABLED" class="text-sm text-gray-600 -mt-2">Primero verifica tu teléfono. Te enviaremos un código por SMS. 📲</p>
         <p v-else class="text-sm text-gray-600 -mt-2">Ingresa tu nombre y teléfono para continuar con tu registro. 🧰</p>
 
         <input v-model="otpName" @input="onOtpName" placeholder="Tu nombre *" :disabled="otpSent || isBlocked"
@@ -513,10 +513,13 @@ const uploadPhotos = async () => {
         <template v-else>
           <button v-if="!otpSent" @click="sendOtp" :disabled="otpLoading"
             class="w-full bg-brand-green text-white py-2.5 rounded-lg font-medium text-sm hover:bg-brand-lightGreen disabled:opacity-50">
-            {{ otpLoading ? (OTP_ENABLED ? 'Enviando...' : 'Continuando...') : (OTP_ENABLED ? 'Enviar código' : 'Continuar →') }}
+            {{ otpLoading ? (OTP_ENABLED ? 'Enviando...' : 'Continuando...') : (OTP_ENABLED ? 'Enviar código de verificación' : 'Continuar →') }}
           </button>
 
           <template v-else>
+            <div class="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-3 py-2 rounded">
+              📩 Te enviamos un <b>SMS</b> con tu código de verificación. Ingrésalo aquí para continuar.
+            </div>
             <input v-model="otpCode" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos" @keyup.enter="verifyOtp"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-green" />
             <div class="flex items-center justify-between text-xs">

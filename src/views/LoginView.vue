@@ -166,11 +166,11 @@ const doReset = async () => {
         <button type="button" @click="genCaptcha" title="Otro reto" class="text-gray-400 hover:text-gray-600">🔄</button>
       </div>
 
-      <!-- <div class="text-right mb-4">
+      <div class="text-right mb-4">
         <button type="button" @click="openReset" class="text-xs text-brand-green hover:text-brand-lightGreen hover:underline font-medium">
           ¿Olvidaste tu contraseña?
         </button>
-      </div> -->
+      </div>
 
       <button @click="submit" :disabled="loading"
         class="w-full bg-brand-green text-white py-2.5 rounded-lg hover:bg-brand-lightGreen disabled:opacity-50 font-semibold shadow-sm transition-all duration-200">
@@ -197,7 +197,7 @@ const doReset = async () => {
 
         <!-- Paso 1: teléfono -->
         <div v-if="resetStep === 'phone'" class="space-y-3 mt-2">
-          <p class="text-xs text-gray-500">Te enviaremos un código por WhatsApp al teléfono con el que te registraste.</p>
+          <p class="text-xs text-gray-500">Te enviaremos un código por SMS al teléfono con el que te registraste.</p>
           <div class="flex gap-2 items-center w-full">
             <select v-model="rDial" class="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white shrink-0 w-24 box-border focus:outline-none focus:ring-2 focus:ring-brand-green">
               <option v-for="d in dialCodes" :key="d.code" :value="d.code">{{ d.flag }} {{ d.code }}</option>
@@ -213,7 +213,7 @@ const doReset = async () => {
 
         <!-- Paso 2: código + nueva contraseña -->
         <div v-else-if="resetStep === 'code'" class="space-y-3 mt-2">
-          <p class="text-xs text-gray-500">Revisa tu WhatsApp e ingresa el código de 6 dígitos.</p>
+          <p class="text-xs text-gray-500">Revisa tus mensajes SMS e ingresa el código de 6 dígitos.</p>
           <input v-model="rCode" inputmode="numeric" maxlength="6" placeholder="Código"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-brand-green" />
           <div class="flex items-center justify-between text-xs">
