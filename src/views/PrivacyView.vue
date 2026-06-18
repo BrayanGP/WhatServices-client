@@ -40,7 +40,7 @@
         <p class="mb-3"><span class="font-semibold">Finalidades primarias</span> (necesarias para el servicio):</p>
         <ul class="list-disc list-outside pl-5 space-y-1 mb-4">
           <li>Registro y autenticación de la cuenta.</li>
-          <li>Verificación del número de teléfono por WhatsApp.</li>
+          <li>Verificación del número de teléfono por SMS y/o WhatsApp.</li>
           <li>Intermediación y contacto entre Clientes y Proveedores.</li>
           <li>Coordinación y notificaciones operativas del servicio.</li>
           <li>Gestión de calificaciones y reseñas.</li>
@@ -58,7 +58,7 @@
       <section class="mb-10">
         <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">4. Transferencias y encargados</h2>
         <p class="mb-3">Para concretar el servicio, compartimos los datos de contacto necesarios entre Clientes y Proveedores involucrados en una solicitud.</p>
-        <p class="mb-3">Asimismo, utilizamos proveedores tecnológicos que actúan como encargados: servicios de hosting e infraestructura, el servicio de mensajería WhatsApp para la comunicación, y Stripe para el procesamiento de pagos.</p>
+        <p class="mb-3">Asimismo, utilizamos proveedores tecnológicos que actúan como encargados: servicios de hosting e infraestructura, Twilio y/o WhatsApp para el envío de mensajes (SMS y mensajería) y la comunicación, y Stripe u otro procesador para los pagos cuando apliquen.</p>
         <p>Salvo lo anterior y los casos previstos por la ley, no transferimos tus datos a terceros sin tu consentimiento.</p>
       </section>
 

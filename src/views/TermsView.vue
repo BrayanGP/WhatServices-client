@@ -5,7 +5,7 @@
     <div class="bg-brand-dark text-white py-16 px-4">
       <div class="max-w-3xl mx-auto text-center">
         <h1 class="text-3xl md:text-4xl font-bold mb-3">Términos y Condiciones de Uso</h1>
-        <p class="text-gray-400 text-sm">Vigente desde el 6 de junio de 2026</p>
+        <p class="text-gray-400 text-sm">Vigente desde el 18 de junio de 2026</p>
       </div>
     </div>
 
@@ -37,7 +37,7 @@
       <!-- 3 -->
       <section class="mb-10">
         <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">3. Registro y cuenta</h2>
-        <p class="mb-3">Para registrarse, el usuario debe proporcionar datos veraces, completos y actualizados, y verificar su número de teléfono mediante un código (OTP) enviado por WhatsApp.</p>
+        <p class="mb-3">Para registrarse, el usuario debe proporcionar datos veraces, completos y actualizados, y verificar su número de teléfono mediante un código (OTP) enviado por SMS y/o WhatsApp.</p>
         <p class="mb-3">El usuario es responsable de mantener la confidencialidad de sus credenciales de acceso y de toda actividad realizada desde su cuenta.</p>
         <p>WhatServices podrá suspender o cancelar cuentas con información falsa, duplicada o que infrinja estos Términos.</p>
       </section>
@@ -65,8 +65,8 @@
 
       <!-- 6 -->
       <section class="mb-10">
-        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">6. Uso de WhatsApp y consentimiento de mensajes</h2>
-        <p class="mb-3">Al registrarse y utilizar la Plataforma, el usuario consiente recibir mensajes por WhatsApp relacionados con la verificación de su cuenta, la coordinación de servicios y notificaciones operativas.</p>
+        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">6. Uso de SMS/WhatsApp y consentimiento de mensajes</h2>
+        <p class="mb-3">Al registrarse y utilizar la Plataforma, el usuario consiente recibir mensajes por SMS y/o WhatsApp relacionados con la verificación de su cuenta, la coordinación de servicios y notificaciones operativas. Podrían aplicar las tarifas de mensajes y datos de su operador.</p>
         <p>El uso de WhatsApp se rige además por los términos y políticas del proveedor de dicho servicio. El usuario puede solicitar dejar de recibir comunicaciones no esenciales en cualquier momento.</p>
       </section>
 
@@ -79,10 +79,28 @@
 
       <!-- 8 -->
       <section class="mb-10">
-        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">8. Pagos, suscripciones y facturación</h2>
-        <p class="mb-3">El acceso a determinadas funciones para Proveedores puede requerir una suscripción de pago procesada a través de Stripe. Al contratar, el usuario acepta los términos del procesador de pagos.</p>
-        <p class="mb-3">Las suscripciones pueden renovarse de forma periódica hasta su cancelación. La facturación, los importes y la periodicidad se informan al momento de la contratación.</p>
-        <p>WhatServices no almacena datos completos de tarjetas; el cobro lo procesa Stripe conforme a sus propios estándares de seguridad.</p>
+        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">8. Periodo de prueba, pagos y suscripciones</h2>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+          <p class="font-semibold text-amber-800 mb-1">⚠️ Etapa de prueba (lanzamiento)</p>
+          <p class="text-amber-700 text-[14px]">
+            Actualmente WhatServices se encuentra en una <span class="font-semibold">etapa de prueba y lanzamiento</span>, durante la cual el uso de la
+            Plataforma es <span class="font-semibold">gratuito</span> para Clientes y Proveedores. Esta gratuidad es temporal y no constituye una promesa
+            de servicio gratuito permanente.
+          </p>
+        </div>
+        <p class="mb-3">
+          WhatServices se reserva el derecho de <span class="font-semibold">cobrar en el futuro</span> por el acceso a la Plataforma o a determinadas
+          funciones (por ejemplo, suscripciones, planes o créditos para Proveedores). Cualquier cobro se comunicará con un
+          <span class="font-semibold">aviso previo razonable</span> (al menos 30 días naturales) a través de la Plataforma y/o por los medios de contacto
+          registrados.
+        </p>
+        <p class="mb-3">
+          <span class="font-semibold">No se realizará ningún cargo sin el consentimiento expreso del usuario.</span> Cuando una función deje de ser gratuita,
+          el usuario podrá aceptar el nuevo esquema de pago o abstenerse de usar dicha función; el uso continuado de una función de pago, tras su
+          activación y aceptación, implica la conformidad con su precio y condiciones.
+        </p>
+        <p class="mb-3">Los pagos, cuando apliquen, podrán procesarse a través de proveedores externos (por ejemplo, Stripe). Al contratar, el usuario acepta también los términos del procesador de pagos. Las suscripciones pueden renovarse de forma periódica hasta su cancelación; los importes y la periodicidad se informarán al momento de la contratación.</p>
+        <p>WhatServices no almacena datos completos de tarjetas; el cobro lo procesa el proveedor de pagos conforme a sus propios estándares de seguridad. Salvo que la ley aplicable disponga lo contrario, los importes pagados por periodos ya iniciados no son reembolsables.</p>
       </section>
 
       <!-- 9 -->
