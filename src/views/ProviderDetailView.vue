@@ -28,6 +28,7 @@ const reviewError = ref('')
 const reviewOk    = ref(false)
 const lightboxIndex = ref(null) // índice de la foto ampliada (para el carrusel)
 const profileLightbox = ref(false)
+const mediaLightbox = ref(null) // URL de foto de reseña ampliada
 
 // ── Galería por categoría/álbum ──────────────────────────────────────────────
 const galleryAlbum = ref('all')
@@ -88,23 +89,33 @@ const starClass = (n) => {
 }
 
 // ── Enviar / editar reseña ────────────────────────────────────────────────────
+// Fotos opcionales de la reseña (máx 4)
+const reviewPhotos = ref([])
+const reviewPreviews = ref([])
+const onReviewPhotos = (e) => {
+  const incoming = Array.from(e.target.files)
+  const room = Math.max(0, 4 - reviewPhotos.value.length)
+  const toAdd = incoming.slice(0, room)
+  reviewPhotos.value = [...reviewPhotos.value, ...toAdd]
+  reviewPreviews.value = [...reviewPreviews.value, ...toAdd.map((f) => URL.createObjectURL(f))]
+  e.target.value = ''
+}
+const removeReviewPhoto = (i) => { reviewPhotos.value.splice(i, 1); reviewPreviews.value.splice(i, 1) }
+
 const submitReview = async () => {
   if (!draft.value.reviewerName.trim()) { reviewError.value = 'Escribe tu nombre'; return }
   submitting.value = true
   reviewError.value = ''
   reviewOk.value = false
   try {
-    const res = await fetch(`${API}/reviews`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        providerId:   route.params.id,
-        rating:       draft.value.rating,
-        comment:      draft.value.comment,
-        reviewerName: draft.value.reviewerName,
-        deviceId,
-      }),
-    })
+    const fd = new FormData()
+    fd.append('providerId', route.params.id)
+    fd.append('rating', draft.value.rating)
+    fd.append('comment', draft.value.comment || '')
+    fd.append('reviewerName', draft.value.reviewerName)
+    fd.append('deviceId', deviceId)
+    reviewPhotos.value.forEach((f) => fd.append('photos', f))
+    const res = await fetch(`${API}/reviews`, { method: 'POST', body: fd })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || 'Error')
 
@@ -119,6 +130,7 @@ const submitReview = async () => {
     myReview.value = data
     isEditing.value = false
     reviewOk.value = true
+    reviewPhotos.value = []; reviewPreviews.value = []
     // Refrescar rating del proveedor
     const fresh = await store.getProvider(route.params.id)
     if (fresh) provider.value = fresh
@@ -158,6 +170,14 @@ const waLink = computed(() => {
         class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/15 text-white text-2xl flex items-center justify-center hover:bg-white/25 leading-none">✕</button>
       <img :src="provider.profilePhoto.url" @click.stop
         class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
+    </div>
+  </Teleport>
+
+  <!-- Lightbox foto de reseña -->
+  <Teleport to="body">
+    <div v-if="mediaLightbox" @click="mediaLightbox = null"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out">
+      <img :src="mediaLightbox" @click.stop class="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl" />
     </div>
   </Teleport>
 
@@ -347,6 +367,24 @@ const waLink = computed(() => {
             class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
           ></textarea>
 
+          <!-- Fotos de la reseña -->
+          <div class="mt-3">
+            <p class="text-xs text-gray-500 mb-2">Agrega fotos (opcional, máx 4)</p>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="(src, i) in reviewPreviews" :key="i" class="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                <img :src="src" class="w-full h-full object-cover" />
+                <button type="button" @click="removeReviewPhoto(i)"
+                  class="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none shadow">✕</button>
+              </div>
+              <label v-if="reviewPhotos.length < 4"
+                class="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-green text-gray-400">
+                <span class="text-xl leading-none">+</span>
+                <span class="text-[10px]">Foto</span>
+                <input type="file" accept="image/*" multiple @change="onReviewPhotos" class="hidden" />
+              </label>
+            </div>
+          </div>
+
           <div class="flex gap-2 mt-3">
             <button @click="submitReview" :disabled="submitting"
               class="flex-1 bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors">
@@ -381,6 +419,12 @@ const waLink = computed(() => {
           </div>
         </div>
         <p v-if="r.comment" class="text-sm text-gray-600 ml-10">{{ r.comment }}</p>
+        <div v-if="r.media && r.media.length" class="ml-10 mt-2 flex flex-wrap gap-2">
+          <div v-for="(m, i) in r.media" :key="m.publicId || i"
+            class="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in" @click="mediaLightbox = m.url">
+            <img :src="m.url" class="w-full h-full object-cover hover:opacity-90" />
+          </div>
+        </div>
         <p class="text-xs text-gray-400 ml-10 mt-1">
           {{ new Date(r.createdAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) }}
         </p>
