@@ -158,11 +158,12 @@ const newPhotos = ref([])
 const newPreviews = ref([])
 const uploadingPhotos = ref(false)
 const photoMsg = ref('')
-const currentAlbum = ref(WHATSAPP_ALBUM)
+const currentAlbum = ref(DEFAULT_ALBUM) // "Todas" es la pestaña inicial (ahí se sube y se reparte)
 const pickerOpen = ref(false)
 
 const allPhotos = computed(() => provider.value?.photos || [])
-const albumList = computed(() => [WHATSAPP_ALBUM, DEFAULT_ALBUM, ...((provider.value?.albums) || [])])
+// Orden: Todas primero (donde se sube), luego WhatsApp (lo que ven los clientes), luego las propias
+const albumList = computed(() => [DEFAULT_ALBUM, WHATSAPP_ALBUM, ...((provider.value?.albums) || [])])
 const albumLabel = (a) => (a === WHATSAPP_ALBUM ? '⭐ WhatsApp' : a === DEFAULT_ALBUM ? '🗂️ Todas' : a)
 const inAlbum = (ph, a) => (ph.albums || [DEFAULT_ALBUM]).includes(a)
 const albumPhotos = computed(() => (provider.value?.photos || []).filter((p) => inAlbum(p, currentAlbum.value)))
@@ -608,8 +609,8 @@ const downloadQr = async () => {
               🖼️ Elegir de mis fotos
             </button>
           </template>
-          <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-sm text-gray-500 mb-2">Todas tus fotos. Puedes subir las que quieras.</p>
-          <p v-else class="text-sm text-gray-500 mb-2">Categoría propia. Sube las fotos que quieras.</p>
+          <p v-else-if="currentAlbum === DEFAULT_ALBUM" class="text-sm text-gray-500 mb-2">📤 Sube aquí tus fotos. Luego, con 🏷️, repártelas a tus categorías y márcalas con ⭐ para que salgan en WhatsApp.</p>
+          <p v-else class="text-sm text-gray-500 mb-2">Categoría propia. Asigna fotos desde <b>Todas</b> con el botón 🏷️.</p>
 
           <div class="grid grid-cols-3 gap-2 mb-2">
             <!-- Existentes del álbum -->
@@ -631,23 +632,29 @@ const downloadQr = async () => {
               <button type="button" @click="removeNew(i)"
                 class="absolute top-1 right-1 w-8 h-8 rounded-full bg-red-500 text-white text-sm flex items-center justify-center hover:bg-red-600 leading-none shadow">✕</button>
             </div>
-            <!-- Slot agregar -->
-            <label v-if="roomLeft > 0" class="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
+            <!-- Slot agregar (subir): SOLO en "Todas" -->
+            <label v-if="currentAlbum === DEFAULT_ALBUM && roomLeft > 0" class="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
               <span class="text-2xl text-gray-300">+</span>
               <span class="text-xs text-gray-400 mt-1">Agregar</span>
               <input type="file" accept="image/*" multiple @change="onWorks" class="hidden" />
             </label>
+            <!-- En otras pestañas, si no hay fotos, invita a ir a "Todas" -->
+            <div v-else-if="currentAlbum !== DEFAULT_ALBUM && !albumPhotos.length" class="col-span-3 text-sm text-gray-400 py-6 text-center">
+              {{ currentAlbum === WHATSAPP_ALBUM ? 'Aún no eliges fotos para WhatsApp. Usa “🖼️ Elegir de mis fotos”.' : 'Sin fotos en esta categoría. Asígnalas desde “Todas” con 🏷️.' }}
+            </div>
           </div>
           <p class="text-xs text-gray-400">⭐ WhatsApp (máx 5) · 🏷️ asignar a categorías · ✕ eliminar. Toca una foto para ampliarla.</p>
         </div>
 
-        <div class="flex items-center gap-3">
-          <button @click="savePhotos" :disabled="uploadingPhotos || (!profileFile && !newPhotos.length)"
+        <!-- Guardar: solo cuando hay algo pendiente (subida nueva o foto de perfil) -->
+        <div v-if="profileFile || newPhotos.length" class="flex items-center gap-3">
+          <button @click="savePhotos" :disabled="uploadingPhotos"
             class="bg-brand-green text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen disabled:opacity-50 transition-colors">
             {{ uploadingPhotos ? 'Subiendo...' : 'Guardar fotos' }}
           </button>
           <span class="text-sm text-gray-500">{{ photoMsg }}</span>
         </div>
+        <p v-else-if="photoMsg" class="text-sm text-brand-green">{{ photoMsg }}</p>
       </div>
 
       <!-- ── QR de perfil ── -->
