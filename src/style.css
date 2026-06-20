@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Fluidez y pulido global ─────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* Transiciones suaves en elementos interactivos */
+a, button, [role="button"], .transition-soft {
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease,
+              box-shadow .18s ease, transform .12s ease, opacity .18s ease;
+}
+/* Feedback táctil al presionar (no en inputs) */
+button:active:not(:disabled), a:active { transform: scale(0.97); }
+
+/* Aparición suave de imágenes y tarjetas */
+@keyframes ws-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ws-fade-in { animation: ws-fade-in .35s ease both; }
+
+/* Scrollbars discretas (WebKit) */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.30); }
+
+/* Emojis: tamaño y alineación consistentes en toda la app */
+.emoji, .ws-emoji {
+  font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  font-style: normal; line-height: 1; display: inline-block; vertical-align: -0.1em;
+}
+
+/* Respeta a quienes prefieren menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
 /* ── reCAPTCHA responsive ──────────────────────────────────────────────────────
    El widget de Google mide 304px de ancho y se desborda en pantallas chicas.
    Envuelve el widget en <div class="recaptcha-responsive"><div class="g-recaptcha" ...></div></div>
