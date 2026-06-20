@@ -245,6 +245,25 @@ const toggleWhatsapp = async (ph) => {
   } catch (e) { flashPhoto(e.message || 'Error') }
 }
 
+// Asignar/quitar una foto a cualquier categoría (repartir desde "Todas")
+const assignPhoto = ref(null) // foto que se está asignando (abre el modal)
+const customAlbums = computed(() => (provider.value?.albums) || [])
+const togglePhotoAlbum = async (ph, album) => {
+  const has = inAlbum(ph, album)
+  if (album === WHATSAPP_ALBUM && !has && waCount.value >= WHATSAPP_MAX) { flashPhoto(`El álbum de WhatsApp admite máximo ${WHATSAPP_MAX} fotos.`); return }
+  let albums = has ? (ph.albums || []).filter((a) => a !== album) : [...(ph.albums || []), album]
+  if (!albums.includes(DEFAULT_ALBUM)) albums.push(DEFAULT_ALBUM) // siempre permanece en "Todas"
+  try {
+    const r = await auth.authFetch(`${API}/providers/${provider.value._id}/photos`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicId: ph.publicId, albums }),
+    })
+    if (!r.ok) throw new Error((await r.json()).message || 'Error')
+    provider.value.photos = (await r.json()).photos
+    // refrescar la foto seleccionada en el modal
+    if (assignPhoto.value) assignPhoto.value = provider.value.photos.find((p) => p.publicId === assignPhoto.value.publicId) || null
+  } catch (e) { flashPhoto(e.message || 'Error') }
+}
+
 const createAlbum = async () => {
   const name = prompt('Nombre de la nueva categoría (ej. Puertas, Closets, Cocinas):')
   if (!name || !name.trim()) return
@@ -325,6 +344,36 @@ const downloadQr = async () => {
         <p v-if="!allPhotos.length" class="text-sm text-gray-400 text-center py-6">Aún no tienes fotos. Súbelas en "Todas" o en una categoría.</p>
         <button @click="pickerOpen = false"
           class="mt-5 w-full bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen">Listo</button>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Modal: asignar foto a categorías -->
+  <Teleport to="body">
+    <div v-if="assignPhoto" @click.self="assignPhoto = null"
+      class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-gray-800">Asignar a categorías</h3>
+          <button @click="assignPhoto = null" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+        <div class="flex gap-3 mb-4">
+          <img :src="assignPhoto.url" class="w-20 h-20 rounded-lg object-cover bg-gray-100" />
+          <p class="text-xs text-gray-500 self-center">Toca una categoría para agregar o quitar esta foto. Siempre permanece en “Todas”.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" @click="togglePhotoAlbum(assignPhoto, WHATSAPP_ALBUM)"
+            :class="['text-sm px-3 py-1.5 rounded-full border', inAlbum(assignPhoto, WHATSAPP_ALBUM) ? 'bg-amber-400 text-white border-amber-400' : 'bg-white text-gray-600 border-gray-300']">
+            ⭐ WhatsApp
+          </button>
+          <button v-for="a in customAlbums" :key="a" type="button" @click="togglePhotoAlbum(assignPhoto, a)"
+            :class="['text-sm px-3 py-1.5 rounded-full border', inAlbum(assignPhoto, a) ? 'bg-brand-green text-white border-brand-green' : 'bg-white text-gray-600 border-gray-300']">
+            {{ a }}
+          </button>
+          <button type="button" @click="createAlbum"
+            class="text-sm px-3 py-1.5 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-brand-green">➕ Nueva</button>
+        </div>
+        <button @click="assignPhoto = null" class="mt-5 w-full bg-brand-green text-white py-2.5 rounded-xl text-sm font-medium hover:bg-brand-lightGreen">Listo</button>
       </div>
     </div>
   </Teleport>
@@ -573,6 +622,8 @@ const downloadQr = async () => {
                 :title="inAlbum(ph, WHATSAPP_ALBUM) ? 'Quitar de WhatsApp' : 'Mostrar en WhatsApp'"
                 :class="['absolute bottom-1 left-1 w-8 h-8 rounded-full text-base flex items-center justify-center leading-none shadow',
                          inAlbum(ph, WHATSAPP_ALBUM) ? 'bg-amber-400 text-white' : 'bg-black/40 text-white hover:bg-black/60']">⭐</button>
+              <button type="button" @click="assignPhoto = ph" title="Asignar a categorías"
+                class="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-black/40 text-white text-base flex items-center justify-center leading-none shadow hover:bg-black/60">🏷️</button>
             </div>
             <!-- Nuevas (preview, sin subir) -->
             <div v-for="(src, i) in newPreviews" :key="'new' + i" class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 ring-2 ring-brand-green/40">
@@ -587,7 +638,7 @@ const downloadQr = async () => {
               <input type="file" accept="image/*" multiple @change="onWorks" class="hidden" />
             </label>
           </div>
-          <p class="text-xs text-gray-400">⭐ marca si la foto se muestra en WhatsApp (máx 5). Toca una foto para ampliarla.</p>
+          <p class="text-xs text-gray-400">⭐ WhatsApp (máx 5) · 🏷️ asignar a categorías · ✕ eliminar. Toca una foto para ampliarla.</p>
         </div>
 
         <div class="flex items-center gap-3">
