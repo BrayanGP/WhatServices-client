@@ -5,7 +5,7 @@
     <div class="bg-brand-dark text-white py-16 px-4">
       <div class="max-w-3xl mx-auto text-center">
         <h1 class="text-3xl md:text-4xl font-bold mb-3">Términos y Condiciones de Uso</h1>
-        <p class="text-gray-400 text-sm">Vigente desde el 18 de junio de 2026</p>
+        <p class="text-gray-400 text-sm">Vigente desde el 20 de junio de 2026</p>
       </div>
     </div>
 
@@ -112,9 +112,35 @@
 
       <!-- 10 -->
       <section class="mb-10">
-        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">10. Propiedad intelectual</h2>
-        <p class="mb-3">La marca, el logotipo, el software, el diseño y los contenidos de la Plataforma son propiedad de WhatServices o de sus licenciantes y están protegidos por la legislación aplicable.</p>
-        <p>Queda prohibida su reproducción, distribución o uso no autorizado. El usuario conserva los derechos sobre el contenido que él publica, otorgando a WhatServices una licencia para mostrarlo dentro de la Plataforma.</p>
+        <h2 class="text-xl font-bold text-brand-dark mb-4 border-l-4 border-brand-green pl-3">10. Propiedad intelectual y contenido de los usuarios</h2>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.1 Propiedad de la Plataforma</h3>
+        <p class="mb-3">La marca, el logotipo, el software, el diseño y los contenidos propios de la Plataforma son propiedad de WhatServices o de sus licenciantes y están protegidos por la legislación aplicable. Queda prohibida su reproducción, distribución o uso no autorizado.</p>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.2 Contenido del usuario y licencia</h3>
+        <p class="mb-3">El usuario (Proveedor o Cliente) conserva la titularidad del contenido que publica (fotografías, imágenes, textos, reseñas y demás materiales, el "Contenido del Usuario"). Al publicarlo, otorga a WhatServices una licencia <span class="font-semibold">mundial, no exclusiva, gratuita, transferible y sublicenciable</span> para alojar, almacenar, reproducir, adaptar (p. ej. recortar o redimensionar), mostrar y comunicar dicho Contenido dentro de la Plataforma y en la promoción de la misma, mientras el Contenido permanezca publicado o sea necesario por motivos legales o de respaldo.</p>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.3 Declaraciones y garantías del usuario</h3>
+        <p class="mb-2">El usuario declara y garantiza, bajo su exclusiva responsabilidad, que respecto de todo Contenido que sube:</p>
+        <ul class="list-disc list-outside pl-5 space-y-1 mb-3">
+          <li>Es de su autoría o cuenta con <span class="font-semibold">todos los derechos, licencias y autorizaciones</span> necesarios para publicarlo y otorgar la licencia anterior.</li>
+          <li>No infringe derechos de autor, marcas, patentes, secretos, derechos de imagen, privacidad, honor ni cualquier otro derecho de terceros.</li>
+          <li>Cuenta con el <span class="font-semibold">consentimiento de las personas identificables</span> que aparezcan en el material.</li>
+          <li>Es veraz y corresponde a su experiencia o trabajo real (en el caso de reseñas y portafolios), y no es engañoso, difamatorio ni fraudulento.</li>
+        </ul>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.4 Contenido prohibido</h3>
+        <p class="mb-3">Queda prohibido publicar contenido ilegal, ofensivo, discriminatorio, sexual, violento, difamatorio, falso, o que infrinja derechos de terceros (incluido material protegido por derechos de autor sin autorización). WhatServices podrá retirar o bloquear dicho contenido sin previo aviso.</p>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.5 Rol de intermediario y hospedaje</h3>
+        <p class="mb-3">El Contenido del Usuario es responsabilidad exclusiva de quien lo publica. WhatServices actúa como <span class="font-semibold">prestador de servicios de alojamiento</span> y <span class="font-semibold">no revisa ni aprueba previamente</span> todo el contenido publicado. WhatServices no hace suyo ni respalda dicho contenido y, en la máxima medida permitida por la ley, no será responsable por el Contenido del Usuario.</p>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.6 Aviso y retiro (reclamos por derechos de autor o de terceros)</h3>
+        <p class="mb-2">Si consideras que algún contenido infringe tus derechos de autor u otros derechos, envía un aviso a <a href="mailto:contacto@whatservice.org" class="text-brand-green hover:underline font-medium">contacto@whatservice.org</a> con: (i) tus datos de contacto; (ii) la identificación y ubicación (URL) del contenido reclamado; (iii) la descripción del derecho presuntamente infringido; y (iv) una declaración, bajo protesta de decir verdad, de que la información es correcta y de que eres el titular o estás autorizado para actuar.</p>
+        <p class="mb-3">WhatServices <span class="font-semibold">retirará o deshabilitará</span> de forma expedita el contenido que razonablemente resulte infractor y podrá <span class="font-semibold">suspender o cancelar</span> las cuentas de usuarios reincidentes.</p>
+
+        <h3 class="font-semibold text-brand-dark mt-4 mb-1">10.7 Indemnización</h3>
+        <p>El usuario se obliga a <span class="font-semibold">mantener en paz y a salvo e indemnizar</span> a WhatServices, sus titulares, socios, empleados y colaboradores, frente a cualquier reclamación, demanda, daño, perjuicio, sanción, gasto o costo (incluidos honorarios razonables de abogados) que derive de: (i) el Contenido del Usuario; (ii) el incumplimiento de estas declaraciones y garantías; o (iii) la infracción de derechos de terceros o de la ley por parte del usuario.</p>
       </section>
 
       <!-- 11 -->
