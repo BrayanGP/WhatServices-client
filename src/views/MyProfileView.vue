@@ -20,6 +20,18 @@ const editModal = ref(false)
 const draft = ref({})
 const editError = ref('')
 
+const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+const defaultSchedule = () => DAYS.map(day => ({ day, open: false, from: '09:00', to: '18:00' }))
+
+const mergeSchedule = (saved) => {
+  const base = defaultSchedule()
+  if (!saved?.length) return base
+  return base.map(d => {
+    const found = saved.find(s => s.day === d.day)
+    return found ? { ...d, ...found } : d
+  })
+}
+
 const openEdit = () => {
   draft.value = {
     businessName: provider.value.businessName || '',
@@ -29,6 +41,7 @@ const openEdit = () => {
     categories:   [...(provider.value.categories || [])],
     availability: provider.value.availability || 'available',
     email:        provider.value.email        || auth.user?.email || '',
+    schedule:     mergeSchedule(provider.value.schedule),
   }
   editError.value = ''
   editModal.value = true
@@ -51,6 +64,7 @@ const draftDirty = computed(() => {
     categories:   [...(draft.value.categories || [])].sort(),
     availability: draft.value.availability,
     email:        draft.value.email,
+    schedule:     draft.value.schedule,
   }) !== JSON.stringify({
     businessName: provider.value.businessName || '',
     description:  provider.value.description  || '',
@@ -59,6 +73,7 @@ const draftDirty = computed(() => {
     categories:   [...(provider.value.categories || [])].sort(),
     availability: provider.value.availability || 'available',
     email:        auth.user?.email            || '',
+    schedule:     mergeSchedule(provider.value.schedule),
   })
 })
 const canSave = computed(() => draftDirty.value && draftHasCategory.value)
@@ -91,11 +106,11 @@ const avgStars = computed(() => {
 const save = async () => {
   saving.value = true; msg.value = ''; editError.value = ''
   try {
-    const { businessName, description, city, postalCode, categories: cats, availability, email } = draft.value
+    const { businessName, description, city, postalCode, categories: cats, availability, email, schedule } = draft.value
     const res = await auth.authFetch(`${API}/providers/${provider.value._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability, email }),
+      body: JSON.stringify({ businessName, description, city, postalCode, categories: cats, availability, email, schedule }),
     })
     if (res.ok) {
       auth.user = { ...auth.user, email: email?.trim() || null }
@@ -421,6 +436,17 @@ const downloadQr = async () => {
           <div v-if="provider.categories?.length" class="flex flex-wrap gap-2 mt-4">
             <span v-for="cat in provider.categories" :key="cat" class="bg-brand-green/10 text-brand-green text-xs px-3 py-1 rounded-full font-medium">{{ cat }}</span>
           </div>
+          <!-- Horario de atención -->
+          <div v-if="provider.schedule?.some(s => s.open)" class="mt-4 border-t border-gray-100 pt-4">
+            <p class="text-xs font-semibold text-gray-500 mb-2">🕐 Horario de atención</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-1">
+              <div v-for="s in provider.schedule.filter(s => s.open)" :key="s.day" class="flex items-center justify-between text-xs">
+                <span class="text-gray-600 font-medium w-20">{{ s.day }}</span>
+                <span class="text-gray-500">{{ s.from }} – {{ s.to }}</span>
+              </div>
+            </div>
+          </div>
+
           <p v-if="msg" class="text-sm text-brand-green mt-3">{{ msg }}</p>
         </div>
       </div>
@@ -479,6 +505,29 @@ const downloadQr = async () => {
                   </button>
                 </div>
                 <p v-if="!draftHasCategory" class="text-xs text-amber-600 mt-2">⚠️ Selecciona al menos un servicio para guardar.</p>
+              </div>
+
+              <!-- Horario de atención -->
+              <div>
+                <label class="text-xs font-medium text-gray-500 mb-2 block">Horario de atención</label>
+                <div class="space-y-2">
+                  <div v-for="(slot, i) in draft.schedule" :key="slot.day" class="flex items-center gap-2">
+                    <button type="button" @click="slot.open = !slot.open"
+                      class="w-6 h-6 rounded flex items-center justify-center shrink-0 transition-colors border"
+                      :class="slot.open ? 'bg-brand-green border-brand-green text-white' : 'bg-white border-gray-300 text-gray-300'">
+                      <svg v-if="slot.open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-3 h-3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </button>
+                    <span class="text-xs font-medium w-20 shrink-0" :class="slot.open ? 'text-gray-700' : 'text-gray-400'">{{ slot.day }}</span>
+                    <template v-if="slot.open">
+                      <input v-model="slot.from" type="time"
+                        class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-green" />
+                      <span class="text-xs text-gray-400">a</span>
+                      <input v-model="slot.to" type="time"
+                        class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-green" />
+                    </template>
+                    <span v-else class="text-xs text-gray-400 italic">Cerrado</span>
+                  </div>
+                </div>
               </div>
 
               <div>
