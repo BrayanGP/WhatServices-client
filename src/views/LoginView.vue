@@ -2,6 +2,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useClientOtp } from '../composables/useClientOtp'
 import miLogo from '../assets/logoWhatServices.png'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -48,67 +49,27 @@ const submit = async () => {
   }
 }
 
-// ── Login cliente ─────────────────────────────────────────────────────────────
+// ── Login / registro cliente con OTP ─────────────────────────────────────────
 const CLIENT_KEY      = 'ws_client_phone'
 const CLIENT_NAME_KEY = 'ws_client_name'
-const cPhone     = ref('')
-const cName      = ref('')
-const cStep      = ref('phone')   // 'phone' | 'register'
-const cError     = ref('')
-const cLoading   = ref(false)
 
-const onCPhone = (e) => { cPhone.value = e.target.value.replace(/\D/g, '').slice(0, 10) }
+const otp = useClientOtp(API)
 
-const clientLogin = async () => {
-  cError.value = ''
-  if (cPhone.value.length !== 10) { cError.value = 'Ingresa tu número de 10 dígitos.'; return }
-  cLoading.value = true
-  try {
-    const res = await fetch(`${API}/clients/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cPhone.value }),
-    })
-    if (res.ok) {
-      const client = await res.json()
-      localStorage.setItem(CLIENT_KEY, cPhone.value)
-      localStorage.setItem(CLIENT_NAME_KEY, client.name || '')
-      router.push('/providers')
-    } else {
-      // Número no encontrado → mostrar campo de nombre para registrarse
-      cStep.value = 'register'
-      cError.value = ''
-    }
-  } catch {
-    cError.value = 'Error de conexión, intenta de nuevo.'
-  } finally {
-    cLoading.value = false
-  }
+const saveClientSession = (phone, name) => {
+  localStorage.setItem(CLIENT_KEY, phone)
+  localStorage.setItem(CLIENT_NAME_KEY, name)
+  router.push('/providers')
 }
 
-const clientRegister = async () => {
-  cError.value = ''
-  if (!cName.value.trim()) { cError.value = 'Escribe tu nombre completo.'; return }
-  cLoading.value = true
-  try {
-    const res = await fetch(`${API}/clients/register`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: cName.value.trim(), phone: cPhone.value }),
-    })
-    if (res.ok) {
-      localStorage.setItem(CLIENT_KEY, cPhone.value)
-      localStorage.setItem(CLIENT_NAME_KEY, cName.value.trim())
-      router.push('/providers')
-    } else {
-      cError.value = 'No se pudo registrar, intenta de nuevo.'
-    }
-  } catch {
-    cError.value = 'Error de conexión, intenta de nuevo.'
-  } finally {
-    cLoading.value = false
-  }
-}
+const clientCheckPhone = () => otp.checkPhone((client) => {
+  saveClientSession(otp.phone.value, client.name || '')
+})
 
-const resetClientForm = () => { cPhone.value = ''; cName.value = ''; cStep.value = 'phone'; cError.value = '' }
+const clientDoRegister = () => otp.doRegister(null, (client) => {
+  saveClientSession(otp.phone.value, client.name || otp.name.value)
+})
+
+const resetClientForm = () => otp.reset()
 
 // ── Olvidé mi contraseña ──────────────────────────────────────────────────────
 const dialCodes = [
@@ -192,47 +153,76 @@ const doReset = async () => {
 
         <!-- ── Tab cliente ── -->
         <template v-if="tab === 'cliente'">
-          <p class="text-sm text-gray-500 mb-5 text-center">
-            {{ cStep === 'phone' ? 'Ingresa tu número para continuar' : '¡Bienvenido! Completa tu registro rápido' }}
+          <p class="text-sm text-gray-500 mb-4 text-center">
+            {{ otp.step.value === 'phone' ? 'Ingresa tu número para continuar'
+              : otp.step.value === 'otp' ? 'Revisa tu SMS e ingresa el código'
+              : '¡Casi listo! Dinos tu nombre' }}
           </p>
 
-          <div v-if="cError" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded-lg mb-4">{{ cError }}</div>
+          <div v-if="otp.error.value" class="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded-lg mb-4">{{ otp.error.value }}</div>
 
-          <!-- Paso 1: solo teléfono -->
-          <div v-if="cStep === 'phone'" class="space-y-4">
+          <!-- Paso 1: teléfono -->
+          <div v-if="otp.step.value === 'phone'" class="space-y-4">
             <div>
               <label class="text-xs font-medium text-gray-500 mb-1 block">Número de celular</label>
               <div class="relative">
-                <input :value="cPhone" @input="onCPhone" type="tel" inputmode="numeric" maxlength="10"
-                  placeholder="Ej. 7711234567" @keyup.enter="clientLogin"
+                <input :value="otp.phone.value" @input="otp.onPhone" type="tel" inputmode="numeric" maxlength="10"
+                  placeholder="Ej. 7711234567" @keyup.enter="clientCheckPhone"
                   class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green pr-12" />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                  :class="cPhone.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
-                  {{ cPhone.length }}/10
+                  :class="otp.phone.value.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
+                  {{ otp.phone.value.length }}/10
                 </span>
               </div>
             </div>
-            <button @click="clientLogin" :disabled="cLoading || cPhone.length !== 10"
+            <button @click="clientCheckPhone" :disabled="otp.loading.value || otp.phone.value.length !== 10"
               class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
-              {{ cLoading ? 'Verificando...' : 'Continuar' }}
+              {{ otp.loading.value ? 'Verificando...' : 'Continuar' }}
             </button>
           </div>
 
-          <!-- Paso 2: número no existe → registro -->
-          <div v-else class="space-y-4">
+          <!-- Paso 2: código OTP (solo si OTP activo) -->
+          <div v-else-if="otp.step.value === 'otp'" class="space-y-4">
             <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
               <span class="text-brand-green text-sm">📱</span>
-              <span class="text-sm text-brand-green font-medium">{{ cPhone }}</span>
-              <button @click="cStep = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }}</span>
+              <button @click="otp.step.value = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Código de verificación (6 dígitos)</label>
+              <input v-model="otp.otpCode.value" inputmode="numeric" maxlength="6" placeholder="······"
+                @keyup.enter="otp.checkOtp"
+                class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm tracking-widest text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span v-if="!otp.codeExpired.value">Válido por <span class="font-mono font-semibold text-brand-green">{{ otp.mmss.value }}</span></span>
+              <span v-else class="text-red-500">Código expirado</span>
+              <span v-if="otp.attemptsLeft.value != null" class="text-amber-600">Intentos restantes: {{ otp.attemptsLeft.value }}</span>
+              <button type="button" @click="otp.resendOtp" :disabled="otp.loading.value || !otp.codeExpired.value"
+                :class="otp.codeExpired.value && !otp.loading.value ? 'text-brand-green hover:underline font-medium' : 'text-gray-300 cursor-not-allowed'">
+                Reenviar
+              </button>
+            </div>
+            <button @click="otp.checkOtp" :disabled="otp.loading.value || otp.otpCode.value.length < 6 || otp.codeExpired.value"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ otp.loading.value ? 'Verificando...' : 'Verificar código' }}
+            </button>
+          </div>
+
+          <!-- Paso 3: nombre (número nuevo, OTP verificado) -->
+          <div v-else class="space-y-4">
+            <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
+              <span class="text-brand-green text-sm">✅</span>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }} verificado</span>
             </div>
             <div>
               <label class="text-xs font-medium text-gray-500 mb-1 block">Tu nombre completo</label>
-              <input v-model="cName" type="text" placeholder="Ej. María López" @keyup.enter="clientRegister"
+              <input v-model="otp.name.value" type="text" placeholder="Ej. María López" @keyup.enter="clientDoRegister"
                 class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
             </div>
-            <button @click="clientRegister" :disabled="cLoading || !cName.trim()"
+            <button @click="clientDoRegister" :disabled="otp.loading.value || !otp.name.value.trim()"
               class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
-              {{ cLoading ? 'Registrando...' : 'Registrarme e ingresar' }}
+              {{ otp.loading.value ? 'Registrando...' : 'Registrarme e ingresar' }}
             </button>
           </div>
 

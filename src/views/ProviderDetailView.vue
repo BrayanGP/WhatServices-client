@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
 import { track } from '../lib/analytics'
+import { useClientOtp } from '../composables/useClientOtp'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation, Pagination } from 'swiper/modules'
 import 'swiper/css'
@@ -165,22 +166,16 @@ const CLIENT_KEY      = 'ws_client_phone'
 const CLIENT_NAME_KEY = 'ws_client_name'
 const isRegistered = ref(!!localStorage.getItem(CLIENT_KEY))
 
-const clientModal   = ref(false)
-const clientAction  = ref(null) // 'whatsapp' | 'call' | 'reveal'
-const clientPhone   = ref('')
-const clientName    = ref('')
-const clientStep    = ref('phone') // 'phone' | 'register'
-const clientError   = ref('')
-const clientSending = ref(false)
+const clientModal  = ref(false)
+const clientAction = ref(null) // 'whatsapp' | 'call' | 'reveal'
+const otp = useClientOtp(API)
+onUnmounted(() => otp.stopTimer())
 
 const requireClient = (action) => {
   if (isRegistered.value) { doAction(action); return }
   clientAction.value = action
-  clientPhone.value  = ''
-  clientName.value   = ''
-  clientStep.value   = 'phone'
-  clientError.value  = ''
-  clientModal.value  = true
+  otp.reset()
+  clientModal.value = true
 }
 
 const doAction = (action) => {
@@ -203,53 +198,13 @@ const saveAndContinue = (phone, name) => {
   doAction(clientAction.value)
 }
 
-// Paso 1: verificar si el teléfono ya está registrado
-const clientCheckPhone = async () => {
-  clientError.value = ''
-  if (clientPhone.value.length !== 10) { clientError.value = 'Ingresa tu número de 10 dígitos.'; return }
-  clientSending.value = true
-  try {
-    const res = await fetch(`${API}/clients/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: clientPhone.value }),
-    })
-    if (res.ok) {
-      const client = await res.json()
-      saveAndContinue(clientPhone.value, client.name || '')
-    } else {
-      // No existe → paso 2 para registrarse
-      clientStep.value = 'register'
-    }
-  } catch {
-    clientError.value = 'Error de conexión, intenta de nuevo.'
-  } finally {
-    clientSending.value = false
-  }
-}
+const clientCheckPhone = () => otp.checkPhone((client) => {
+  saveAndContinue(otp.phone.value, client.name || '')
+})
 
-// Paso 2: registrar nuevo cliente
-const clientRegister = async () => {
-  clientError.value = ''
-  if (!clientName.value.trim()) { clientError.value = 'Escribe tu nombre completo.'; return }
-  clientSending.value = true
-  try {
-    const res = await fetch(`${API}/clients/register`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: clientName.value.trim(), phone: clientPhone.value, providerId: provider.value?._id }),
-    })
-    if (res.ok) {
-      saveAndContinue(clientPhone.value, clientName.value.trim())
-    } else {
-      clientError.value = 'No se pudo registrar, intenta de nuevo.'
-    }
-  } catch {
-    clientError.value = 'Ocurrió un error, intenta de nuevo.'
-  } finally {
-    clientSending.value = false
-  }
-}
-
-const onClientPhone = (e) => { clientPhone.value = e.target.value.replace(/\D/g, '').slice(0, 10) }
+const clientDoRegister = () => otp.doRegister(provider.value?._id, (client) => {
+  saveAndContinue(otp.phone.value, client.name || otp.name.value)
+})
 
 // ── Llamada telefónica ────────────────────────────────────────────────────────
 const phoneRevealed = ref(false)
@@ -287,58 +242,88 @@ const maskedPhone = computed(() => {
             </div>
             <div>
               <p class="font-bold text-base leading-tight">
-                {{ clientStep === 'phone' ? '¡Un paso antes de continuar!' : '¡Bienvenido a WhatServices!' }}
+                {{ otp.step.value === 'phone' ? '¡Un paso antes de continuar!'
+                  : otp.step.value === 'otp' ? 'Verifica tu número'
+                  : '¡Bienvenido a WhatServices!' }}
               </p>
               <p class="text-xs text-white/80 mt-0.5">Es gratis y toma solo segundos</p>
             </div>
           </div>
           <p class="text-sm text-white/90 leading-relaxed">
-            {{ clientStep === 'phone'
-              ? 'Ingresa tu número para continuar. Si ya tienes cuenta, entrarás de inmediato.'
-              : 'Tu número es nuevo. Dinos cómo te llamas para completar tu registro.' }}
+            {{ otp.step.value === 'phone'
+              ? 'Ingresa tu número. Si ya tienes cuenta, entrarás de inmediato.'
+              : otp.step.value === 'otp'
+              ? 'Te enviamos un código por SMS. Ingrésalo para confirmar que eres tú.'
+              : 'Número verificado. Solo dinos tu nombre para completar el registro.' }}
           </p>
         </div>
 
         <!-- Formulario -->
         <div class="px-6 py-5 space-y-3">
 
+          <p v-if="otp.error.value" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ otp.error.value }}</p>
+
           <!-- Paso 1: teléfono -->
-          <template v-if="clientStep === 'phone'">
+          <template v-if="otp.step.value === 'phone'">
             <div>
               <label class="text-xs font-medium text-gray-500 mb-1 block">Número de celular (10 dígitos)</label>
               <div class="relative">
-                <input :value="clientPhone" @input="onClientPhone" type="tel" inputmode="numeric" placeholder="Ej. 7711234567" maxlength="10"
+                <input :value="otp.phone.value" @input="otp.onPhone" type="tel" inputmode="numeric" placeholder="Ej. 7711234567" maxlength="10"
                   @keyup.enter="clientCheckPhone"
                   class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green pr-12" />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                  :class="clientPhone.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
-                  {{ clientPhone.length }}/10
+                  :class="otp.phone.value.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
+                  {{ otp.phone.value.length }}/10
                 </span>
               </div>
             </div>
-            <p v-if="clientError" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ clientError }}</p>
-            <button @click="clientCheckPhone" :disabled="clientSending || clientPhone.length !== 10"
+            <button @click="clientCheckPhone" :disabled="otp.loading.value || otp.phone.value.length !== 10"
               class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
-              {{ clientSending ? 'Verificando...' : 'Continuar' }}
+              {{ otp.loading.value ? 'Verificando...' : 'Continuar' }}
             </button>
           </template>
 
-          <!-- Paso 2: nombre (número nuevo) -->
-          <template v-else>
+          <!-- Paso 2: código OTP -->
+          <template v-else-if="otp.step.value === 'otp'">
             <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
               <span class="text-brand-green text-sm">📱</span>
-              <span class="text-sm text-brand-green font-medium">{{ clientPhone }}</span>
-              <button @click="clientStep = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }}</span>
+              <button @click="otp.step.value = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Código de verificación (SMS)</label>
+              <input v-model="otp.otpCode.value" inputmode="numeric" maxlength="6" placeholder="······"
+                @keyup.enter="otp.checkOtp"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm tracking-widest text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span v-if="!otp.codeExpired.value">Válido por <span class="font-mono font-semibold text-brand-green">{{ otp.mmss.value }}</span></span>
+              <span v-else class="text-red-500">Código expirado</span>
+              <button type="button" @click="otp.resendOtp" :disabled="otp.loading.value || !otp.codeExpired.value"
+                :class="otp.codeExpired.value && !otp.loading.value ? 'text-brand-green hover:underline font-medium' : 'text-gray-300 cursor-not-allowed'">
+                Reenviar
+              </button>
+            </div>
+            <button @click="otp.checkOtp" :disabled="otp.loading.value || otp.otpCode.value.length < 6 || otp.codeExpired.value"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ otp.loading.value ? 'Verificando...' : 'Verificar código' }}
+            </button>
+          </template>
+
+          <!-- Paso 3: nombre -->
+          <template v-else>
+            <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
+              <span class="text-brand-green text-sm">✅</span>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }} verificado</span>
             </div>
             <div>
               <label class="text-xs font-medium text-gray-500 mb-1 block">Tu nombre completo</label>
-              <input v-model="clientName" type="text" placeholder="Ej. María López" @keyup.enter="clientRegister"
+              <input v-model="otp.name.value" type="text" placeholder="Ej. María López" @keyup.enter="clientDoRegister"
                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
             </div>
-            <p v-if="clientError" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ clientError }}</p>
-            <button @click="clientRegister" :disabled="clientSending || !clientName.trim()"
+            <button @click="clientDoRegister" :disabled="otp.loading.value || !otp.name.value.trim()"
               class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
-              {{ clientSending ? 'Registrando...' : 'Registrarme y continuar' }}
+              {{ otp.loading.value ? 'Registrando...' : 'Registrarme y continuar' }}
             </button>
           </template>
 
