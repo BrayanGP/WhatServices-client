@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import miLogo from '../assets/logoWhatServices.png'
@@ -17,11 +17,15 @@ const clientPhone = ref(localStorage.getItem(CLIENT_KEY) || '')
 const clientName  = ref(localStorage.getItem(CLIENT_NAME_KEY) || '')
 const isClient    = computed(() => !auth.isLoggedIn && !!clientPhone.value)
 
-// Re-leer localStorage cada vez que cambia la ruta (post-login redirect)
-watch(() => route.fullPath, () => {
+const syncClientSession = () => {
   clientPhone.value = localStorage.getItem(CLIENT_KEY) || ''
   clientName.value  = localStorage.getItem(CLIENT_NAME_KEY) || ''
-})
+}
+
+// Actualiza al cambiar ruta (login redirect) o al recibir evento de registro inline
+watch(() => route.fullPath, syncClientSession)
+onMounted(() => window.addEventListener('ws-client-session', syncClientSession))
+onUnmounted(() => window.removeEventListener('ws-client-session', syncClientSession))
 
 const logoutClient = () => {
   localStorage.removeItem(CLIENT_KEY)

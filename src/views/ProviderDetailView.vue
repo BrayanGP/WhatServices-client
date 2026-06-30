@@ -199,6 +199,7 @@ const saveAndContinue = (phone, name) => {
   localStorage.setItem(CLIENT_NAME_KEY, name)
   isRegistered.value = true
   clientModal.value  = false
+  window.dispatchEvent(new Event('ws-client-session'))
   doAction(clientAction.value)
 }
 
