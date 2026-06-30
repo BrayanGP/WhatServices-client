@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import miLogo from '../assets/logoWhatServices.png'
 
 const auth   = useAuthStore()
 const router = useRouter()
+const route  = useRoute()
 const isOpen = ref(false)
 
 // ── Sesión cliente (localStorage) ────────────────────────────────────────────
@@ -15,6 +16,12 @@ const CLIENT_NAME_KEY = 'ws_client_name'
 const clientPhone = ref(localStorage.getItem(CLIENT_KEY) || '')
 const clientName  = ref(localStorage.getItem(CLIENT_NAME_KEY) || '')
 const isClient    = computed(() => !auth.isLoggedIn && !!clientPhone.value)
+
+// Re-leer localStorage cada vez que cambia la ruta (post-login redirect)
+watch(() => route.fullPath, () => {
+  clientPhone.value = localStorage.getItem(CLIENT_KEY) || ''
+  clientName.value  = localStorage.getItem(CLIENT_NAME_KEY) || ''
+})
 
 const logoutClient = () => {
   localStorage.removeItem(CLIENT_KEY)
@@ -79,7 +86,7 @@ const logout = async () => {
           <!-- Cliente logueado -->
           <template v-else-if="isClient">
             <router-link to="/providers" class="text-brand-dark hover:text-brand-green text-sm font-semibold transition-colors">
-              Profesionales
+              Clientes
             </router-link>
             <span class="text-brand-dark hover:text-brand-green text-sm font-semibold flex items-center gap-1">
               <svg class="w-5 h-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +134,7 @@ const logout = async () => {
       <template v-else-if="isClient">
         <div class="border-t border-gray-100 pt-3 flex flex-col gap-3">
           <router-link to="/providers" class="text-sm font-semibold text-brand-dark py-1" @click="isOpen = false">
-            Profesionales
+            Clientes
           </router-link>
           <span class="text-sm font-semibold text-brand-dark py-1 flex items-center gap-2">
             <svg class="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
