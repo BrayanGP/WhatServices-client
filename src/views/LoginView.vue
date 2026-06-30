@@ -49,7 +49,8 @@ const submit = async () => {
 }
 
 // ── Login cliente ─────────────────────────────────────────────────────────────
-const CLIENT_KEY = 'ws_client_phone'
+const CLIENT_KEY      = 'ws_client_phone'
+const CLIENT_NAME_KEY = 'ws_client_name'
 const cPhone     = ref('')
 const cName      = ref('')
 const cStep      = ref('phone')   // 'phone' | 'register'
@@ -68,7 +69,9 @@ const clientLogin = async () => {
       body: JSON.stringify({ phone: cPhone.value }),
     })
     if (res.ok) {
+      const client = await res.json()
       localStorage.setItem(CLIENT_KEY, cPhone.value)
+      localStorage.setItem(CLIENT_NAME_KEY, client.name || '')
       router.push('/providers')
     } else {
       // Número no encontrado → mostrar campo de nombre para registrarse
@@ -93,6 +96,7 @@ const clientRegister = async () => {
     })
     if (res.ok) {
       localStorage.setItem(CLIENT_KEY, cPhone.value)
+      localStorage.setItem(CLIENT_NAME_KEY, cName.value.trim())
       router.push('/providers')
     } else {
       cError.value = 'No se pudo registrar, intenta de nuevo.'

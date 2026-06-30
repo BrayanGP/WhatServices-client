@@ -161,7 +161,8 @@ const waLink = computed(() => {
 })
 
 // ── Registro de cliente ───────────────────────────────────────────────────────
-const CLIENT_KEY = 'ws_client_phone'
+const CLIENT_KEY      = 'ws_client_phone'
+const CLIENT_NAME_KEY = 'ws_client_name'
 const isRegistered = ref(!!localStorage.getItem(CLIENT_KEY))
 
 const clientModal   = ref(false)
@@ -212,6 +213,7 @@ const registerClient = async () => {
       }),
     })
     localStorage.setItem(CLIENT_KEY, rawPhone)
+    localStorage.setItem(CLIENT_NAME_KEY, clientForm.value.name.trim())
     isRegistered.value = true
     clientModal.value  = false
     doAction(clientAction.value)
