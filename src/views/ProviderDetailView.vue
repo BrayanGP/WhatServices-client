@@ -160,21 +160,25 @@ const waLink = computed(() => {
   return `https://wa.me/${digits}?text=${msg}`
 })
 
-// ── Registro de cliente ───────────────────────────────────────────────────────
+// ── Sesión cliente ────────────────────────────────────────────────────────────
 const CLIENT_KEY      = 'ws_client_phone'
 const CLIENT_NAME_KEY = 'ws_client_name'
 const isRegistered = ref(!!localStorage.getItem(CLIENT_KEY))
 
 const clientModal   = ref(false)
 const clientAction  = ref(null) // 'whatsapp' | 'call' | 'reveal'
-const clientForm    = ref({ name: '', phone: '' })
+const clientPhone   = ref('')
+const clientName    = ref('')
+const clientStep    = ref('phone') // 'phone' | 'register'
 const clientError   = ref('')
 const clientSending = ref(false)
 
 const requireClient = (action) => {
   if (isRegistered.value) { doAction(action); return }
   clientAction.value = action
-  clientForm.value   = { name: '', phone: '' }
+  clientPhone.value  = ''
+  clientName.value   = ''
+  clientStep.value   = 'phone'
   clientError.value  = ''
   clientModal.value  = true
 }
@@ -190,33 +194,53 @@ const doAction = (action) => {
   }
 }
 
-const registerClient = async () => {
-  const rawPhone = clientForm.value.phone.replace(/\D/g, '')
-  if (!clientForm.value.name.trim()) {
-    clientError.value = 'Por favor escribe tu nombre completo.'
-    return
-  }
-  if (rawPhone.length !== 10) {
-    clientError.value = 'El número debe tener exactamente 10 dígitos.'
-    return
-  }
+const saveAndContinue = (phone, name) => {
+  localStorage.setItem(CLIENT_KEY, phone)
+  localStorage.setItem(CLIENT_NAME_KEY, name)
+  isRegistered.value = true
+  clientModal.value  = false
+  doAction(clientAction.value)
+}
+
+// Paso 1: verificar si el teléfono ya está registrado
+const clientCheckPhone = async () => {
+  clientError.value = ''
+  if (clientPhone.value.length !== 10) { clientError.value = 'Ingresa tu número de 10 dígitos.'; return }
   clientSending.value = true
-  clientError.value   = ''
   try {
-    await fetch(`${API}/clients/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: clientForm.value.name.trim(),
-        phone: rawPhone,
-        providerId: provider.value?._id,
-      }),
+    const res = await fetch(`${API}/clients/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: clientPhone.value }),
     })
-    localStorage.setItem(CLIENT_KEY, rawPhone)
-    localStorage.setItem(CLIENT_NAME_KEY, clientForm.value.name.trim())
-    isRegistered.value = true
-    clientModal.value  = false
-    doAction(clientAction.value)
+    if (res.ok) {
+      const client = await res.json()
+      saveAndContinue(clientPhone.value, client.name || '')
+    } else {
+      // No existe → paso 2 para registrarse
+      clientStep.value = 'register'
+    }
+  } catch {
+    clientError.value = 'Error de conexión, intenta de nuevo.'
+  } finally {
+    clientSending.value = false
+  }
+}
+
+// Paso 2: registrar nuevo cliente
+const clientRegister = async () => {
+  clientError.value = ''
+  if (!clientName.value.trim()) { clientError.value = 'Escribe tu nombre completo.'; return }
+  clientSending.value = true
+  try {
+    const res = await fetch(`${API}/clients/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: clientName.value.trim(), phone: clientPhone.value, providerId: provider.value?._id }),
+    })
+    if (res.ok) {
+      saveAndContinue(clientPhone.value, clientName.value.trim())
+    } else {
+      clientError.value = 'No se pudo registrar, intenta de nuevo.'
+    }
   } catch {
     clientError.value = 'Ocurrió un error, intenta de nuevo.'
   } finally {
@@ -224,10 +248,7 @@ const registerClient = async () => {
   }
 }
 
-// Solo permite dígitos en el campo teléfono del formulario
-const onClientPhone = (e) => {
-  clientForm.value.phone = e.target.value.replace(/\D/g, '').slice(0, 10)
-}
+const onClientPhone = (e) => { clientPhone.value = e.target.value.replace(/\D/g, '').slice(0, 10) }
 
 // ── Llamada telefónica ────────────────────────────────────────────────────────
 const phoneRevealed = ref(false)
@@ -254,7 +275,7 @@ const maskedPhone = computed(() => {
     <div v-if="clientModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" @click.self="clientModal = false">
       <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
 
-        <!-- Cabecera con gradiente de marca -->
+        <!-- Cabecera -->
         <div class="bg-gradient-to-br from-brand-green to-brand-dark px-6 pt-6 pb-8 relative text-white">
           <button @click="clientModal = false" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors" aria-label="Cerrar">✕</button>
           <div class="flex items-center gap-3 mb-3">
@@ -264,39 +285,63 @@ const maskedPhone = computed(() => {
               </svg>
             </div>
             <div>
-              <p class="font-bold text-base leading-tight">¡Un paso antes de continuar!</p>
+              <p class="font-bold text-base leading-tight">
+                {{ clientStep === 'phone' ? '¡Un paso antes de continuar!' : '¡Bienvenido a WhatServices!' }}
+              </p>
               <p class="text-xs text-white/80 mt-0.5">Es gratis y toma solo segundos</p>
             </div>
           </div>
           <p class="text-sm text-white/90 leading-relaxed">
-            Regístrate y contacta a este profesional de inmediato. Así podrás recibir cotizaciones, hacer seguimiento y descubrir más servicios cerca de ti.
+            {{ clientStep === 'phone'
+              ? 'Ingresa tu número para continuar. Si ya tienes cuenta, entrarás de inmediato.'
+              : 'Tu número es nuevo. Dinos cómo te llamas para completar tu registro.' }}
           </p>
         </div>
 
         <!-- Formulario -->
         <div class="px-6 py-5 space-y-3">
-          <div>
-            <label class="text-xs font-medium text-gray-500 mb-1 block">Nombre completo</label>
-            <input v-model="clientForm.name" type="text" placeholder="Ej. María López"
-              class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
-          </div>
-          <div>
-            <label class="text-xs font-medium text-gray-500 mb-1 block">Número de celular (10 dígitos)</label>
-            <div class="relative">
-              <input :value="clientForm.phone" @input="onClientPhone" type="tel" inputmode="numeric" placeholder="Ej. 7711234567" maxlength="10"
-                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green pr-12" />
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                :class="clientForm.phone.length === 10 ? 'text-brand-green' : 'text-gray-400'">
-                {{ clientForm.phone.length }}/10
-              </span>
+
+          <!-- Paso 1: teléfono -->
+          <template v-if="clientStep === 'phone'">
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Número de celular (10 dígitos)</label>
+              <div class="relative">
+                <input :value="clientPhone" @input="onClientPhone" type="tel" inputmode="numeric" placeholder="Ej. 7711234567" maxlength="10"
+                  @keyup.enter="clientCheckPhone"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green pr-12" />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+                  :class="clientPhone.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
+                  {{ clientPhone.length }}/10
+                </span>
+              </div>
             </div>
-          </div>
-          <p v-if="clientError" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ clientError }}</p>
-          <button @click="registerClient" :disabled="clientSending"
-            class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm mt-1">
-            {{ clientSending ? 'Registrando...' : 'Registrar e ir a WhatsApp' }}
-          </button>
-          <p class="text-xs text-center text-gray-400">Al registrarte aceptas nuestros <router-link to="/terminos" class="underline hover:text-brand-green">Términos</router-link> y <router-link to="/privacidad" class="underline hover:text-brand-green">Privacidad</router-link>.</p>
+            <p v-if="clientError" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ clientError }}</p>
+            <button @click="clientCheckPhone" :disabled="clientSending || clientPhone.length !== 10"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ clientSending ? 'Verificando...' : 'Continuar' }}
+            </button>
+          </template>
+
+          <!-- Paso 2: nombre (número nuevo) -->
+          <template v-else>
+            <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
+              <span class="text-brand-green text-sm">📱</span>
+              <span class="text-sm text-brand-green font-medium">{{ clientPhone }}</span>
+              <button @click="clientStep = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Tu nombre completo</label>
+              <input v-model="clientName" type="text" placeholder="Ej. María López" @keyup.enter="clientRegister"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+            <p v-if="clientError" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ clientError }}</p>
+            <button @click="clientRegister" :disabled="clientSending || !clientName.trim()"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ clientSending ? 'Registrando...' : 'Registrarme y continuar' }}
+            </button>
+          </template>
+
+          <p class="text-xs text-center text-gray-400">Al continuar aceptas nuestros <router-link to="/terminos" class="underline hover:text-brand-green">Términos</router-link> y <router-link to="/privacidad" class="underline hover:text-brand-green">Privacidad</router-link>.</p>
         </div>
       </div>
     </div>
