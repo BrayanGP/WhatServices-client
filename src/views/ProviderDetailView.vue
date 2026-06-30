@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProvidersStore } from '../stores/providers'
 import { track } from '../lib/analytics'
+import { useClientOtp } from '../composables/useClientOtp'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation, Pagination } from 'swiper/modules'
 import 'swiper/css'
@@ -160,9 +161,54 @@ const waLink = computed(() => {
   return `https://wa.me/${digits}?text=${msg}`
 })
 
-// Llamada telefónica
+// ── Sesión cliente ────────────────────────────────────────────────────────────
+const CLIENT_KEY      = 'ws_client_phone'
+const CLIENT_NAME_KEY = 'ws_client_name'
+const isRegistered = ref(!!localStorage.getItem(CLIENT_KEY))
+
+const clientModal  = ref(false)
+const clientAction = ref(null) // 'whatsapp' | 'call' | 'reveal'
+const otp = useClientOtp(API)
+onUnmounted(() => otp.stopTimer())
+
+const requireClient = (action) => {
+  if (isRegistered.value) { doAction(action); return }
+  clientAction.value = action
+  otp.reset()
+  clientModal.value = true
+}
+
+const doAction = (action) => {
+  if (action === 'whatsapp') {
+    window.open(waLink.value, '_blank', 'noopener,noreferrer')
+    track('whatsapp_click', { id: provider.value._id, name: provider.value.businessName })
+  } else if (action === 'call') {
+    window.location.href = telLink.value
+  } else if (action === 'reveal') {
+    phoneRevealed.value = true
+  }
+}
+
+const saveAndContinue = (phone, name) => {
+  localStorage.setItem(CLIENT_KEY, phone)
+  localStorage.setItem(CLIENT_NAME_KEY, name)
+  isRegistered.value = true
+  clientModal.value  = false
+  window.dispatchEvent(new Event('ws-client-session'))
+  doAction(clientAction.value)
+}
+
+const clientCheckPhone = () => otp.checkPhone((client) => {
+  saveAndContinue(otp.phone.value, client.name || '')
+})
+
+const clientDoRegister = () => otp.doRegister(provider.value?._id, (client) => {
+  saveAndContinue(otp.phone.value, client.name || otp.name.value)
+})
+
+// ── Llamada telefónica ────────────────────────────────────────────────────────
 const phoneRevealed = ref(false)
-const phoneCopied = ref(false)
+const phoneCopied   = ref(false)
 const telLink = computed(() => {
   const digits = String(provider.value?.phone || '').replace(/\D/g, '')
   return digits ? `tel:${digits}` : ''
@@ -172,9 +218,121 @@ const copyPhone = async () => {
   phoneCopied.value = true
   setTimeout(() => (phoneCopied.value = false), 2000)
 }
+// Número enmascarado para no-registrados
+const maskedPhone = computed(() => {
+  const p = String(provider.value?.phone || '')
+  return p ? p.slice(0, 3) + ' ' + '●●●●' + ' ' + p.slice(-2) : ''
+})
 </script>
 
 <template>
+  <!-- Modal registro rápido de cliente -->
+  <Teleport to="body">
+    <div v-if="clientModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" @click.self="clientModal = false">
+      <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+
+        <!-- Cabecera -->
+        <div class="bg-gradient-to-br from-brand-green to-brand-dark px-6 pt-6 pb-8 relative text-white">
+          <button @click="clientModal = false" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors" aria-label="Cerrar">✕</button>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5" aria-hidden="true">
+                <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.515 5.26l-.999 3.648 3.484-.911zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="font-bold text-base leading-tight">
+                {{ otp.step.value === 'phone' ? '¡Un paso antes de continuar!'
+                  : otp.step.value === 'otp' ? 'Verifica tu número'
+                  : '¡Bienvenido a WhatServices!' }}
+              </p>
+              <p class="text-xs text-white/80 mt-0.5">Es gratis y toma solo segundos</p>
+            </div>
+          </div>
+          <p class="text-sm text-white/90 leading-relaxed">
+            {{ otp.step.value === 'phone'
+              ? 'Ingresa tu número. Si ya tienes cuenta, entrarás de inmediato.'
+              : otp.step.value === 'otp'
+              ? 'Te enviamos un código por SMS. Ingrésalo para confirmar que eres tú.'
+              : 'Número verificado. Solo dinos tu nombre para completar el registro.' }}
+          </p>
+        </div>
+
+        <!-- Formulario -->
+        <div class="px-6 py-5 space-y-3">
+
+          <p v-if="otp.error.value" class="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{{ otp.error.value }}</p>
+
+          <!-- Paso 1: teléfono -->
+          <template v-if="otp.step.value === 'phone'">
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Número de celular (10 dígitos)</label>
+              <div class="relative">
+                <input :value="otp.phone.value" @input="otp.onPhone" type="tel" inputmode="numeric" placeholder="Ej. 7711234567" maxlength="10"
+                  @keyup.enter="clientCheckPhone"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green pr-12" />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+                  :class="otp.phone.value.length === 10 ? 'text-brand-green font-medium' : 'text-gray-300'">
+                  {{ otp.phone.value.length }}/10
+                </span>
+              </div>
+            </div>
+            <button @click="clientCheckPhone" :disabled="otp.loading.value || otp.phone.value.length !== 10"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ otp.loading.value ? 'Verificando...' : 'Continuar' }}
+            </button>
+          </template>
+
+          <!-- Paso 2: código OTP -->
+          <template v-else-if="otp.step.value === 'otp'">
+            <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
+              <span class="text-brand-green text-sm">📱</span>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }}</span>
+              <button @click="otp.step.value = 'phone'" class="ml-auto text-xs text-gray-400 hover:text-brand-green underline">Cambiar</button>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Código de verificación (SMS)</label>
+              <input v-model="otp.otpCode.value" inputmode="numeric" maxlength="6" placeholder="······"
+                @keyup.enter="otp.checkOtp"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm tracking-widest text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span v-if="!otp.codeExpired.value">Válido por <span class="font-mono font-semibold text-brand-green">{{ otp.mmss.value }}</span></span>
+              <span v-else class="text-red-500">Código expirado</span>
+              <button type="button" @click="otp.resendOtp" :disabled="otp.loading.value || !otp.codeExpired.value"
+                :class="otp.codeExpired.value && !otp.loading.value ? 'text-brand-green hover:underline font-medium' : 'text-gray-300 cursor-not-allowed'">
+                Reenviar
+              </button>
+            </div>
+            <button @click="otp.checkOtp" :disabled="otp.loading.value || otp.otpCode.value.length < 6 || otp.codeExpired.value"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ otp.loading.value ? 'Verificando...' : 'Verificar código' }}
+            </button>
+          </template>
+
+          <!-- Paso 3: nombre -->
+          <template v-else>
+            <div class="flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-xl px-3 py-2.5">
+              <span class="text-brand-green text-sm">✅</span>
+              <span class="text-sm text-brand-green font-medium">{{ otp.phone.value }} verificado</span>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500 mb-1 block">Tu nombre completo</label>
+              <input v-model="otp.name.value" type="text" placeholder="Ej. María López" @keyup.enter="clientDoRegister"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green" />
+            </div>
+            <button @click="clientDoRegister" :disabled="otp.loading.value || !otp.name.value.trim()"
+              class="w-full bg-brand-green text-white py-3 rounded-xl font-semibold text-sm hover:bg-brand-lightGreen disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+              {{ otp.loading.value ? 'Registrando...' : 'Registrarme y continuar' }}
+            </button>
+          </template>
+
+          <p class="text-xs text-center text-gray-400">Al continuar aceptas nuestros <router-link to="/terminos" class="underline hover:text-brand-green">Términos</router-link> y <router-link to="/privacidad" class="underline hover:text-brand-green">Privacidad</router-link>.</p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <!-- Lightbox foto de perfil -->
   <Teleport to="body">
     <div v-if="profileLightbox" @click="profileLightbox = false"
@@ -285,26 +443,26 @@ const copyPhone = async () => {
 
         <!-- CTA WhatsApp + Llamar -->
         <div class="mt-5 flex flex-wrap gap-3 items-center">
-          <a :href="waLink" target="_blank" rel="noopener noreferrer"
-            @click="track('whatsapp_click', { id: provider._id, name: provider.businessName })"
+          <button @click="requireClient('whatsapp')"
             class="inline-flex items-center gap-2 bg-brand-green text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-brand-lightGreen transition-colors shadow-sm">
             <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4" aria-hidden="true">
               <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.515 5.26l-.999 3.648 3.484-.911zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
             </svg>
-            Enviar WhatsApp · {{ provider.phone }}
-          </a>
+            Enviar WhatsApp · {{ isRegistered ? provider.phone : maskedPhone }}
+          </button>
 
-          <!-- Llamar: mobile muestra tel:, desktop revela número -->
-          <a v-if="telLink" :href="telLink"
+          <!-- Llamar mobile -->
+          <button v-if="telLink" @click="requireClient('call')"
             class="md:hidden inline-flex items-center gap-2 border border-brand-green text-brand-green px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-brand-green hover:text-white transition-colors shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
             Llamar
-          </a>
+          </button>
 
+          <!-- Ver número desktop -->
           <div v-if="telLink" class="hidden md:flex items-center gap-2">
-            <button v-if="!phoneRevealed" @click="phoneRevealed = true"
+            <button v-if="!phoneRevealed" @click="requireClient('reveal')"
               class="inline-flex items-center gap-2 border border-brand-green text-brand-green px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-brand-green hover:text-white transition-colors shadow-sm">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
